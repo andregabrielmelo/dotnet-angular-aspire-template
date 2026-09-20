@@ -20,6 +20,12 @@ builder
     .SwaggerDocument(o =>
     {
         o.ShortSchemaNames = true;
+        o.DocumentSettings = s =>
+        {
+            s.Title = "AppTemplate API";
+            s.Version = "v1";
+            s.Description = "REST API for AppTemplate.";
+        };
     });
 
 var app = builder.Build();
