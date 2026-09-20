@@ -32,7 +32,6 @@ public class ListEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users");
-        AllowAnonymous();
 
         Summary(s =>
         {
