@@ -1,0 +1,11 @@
+<script>
+  // Applies the visitor's saved theme choice before first paint (avoids a flash of the
+  // wrong theme). Falls back to dark - the site's default - when nothing is saved yet.
+  (function () {
+    try {
+      var stored = localStorage.getItem('theme');
+      var theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {}
+  })();
+</script>

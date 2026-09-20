@@ -7,3 +7,7 @@ theme = 'hugo-book' # A popular, clean, and minimal docs theme
   BookRepo = 'https://github.com/andregabrielmelo/dotnet-angular-aspire-template'
   BookEditPath = 'edit/main/docs'
   BookSection = '*'
+  # Default for first-time visitors / no-JS; the toggle in the sidebar (see
+  # layouts/_partials/docs/inject/{head,menu-before}.html) overrides this
+  # per-visitor via localStorage.
+  BookTheme = 'dark'
