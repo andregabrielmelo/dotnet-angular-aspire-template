@@ -37,6 +37,6 @@ public class MimeKitEmailSender(
 
         await client.SendAsync(message);
 
-        await client.DisconnectAsync(true, new CancellationToken(canceled: true));
+        await client.DisconnectAsync(true, CancellationToken.None);
     }
 }
