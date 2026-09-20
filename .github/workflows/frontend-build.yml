@@ -45,6 +45,9 @@ jobs:
       - name: Check formatting (prettier)
         run: npx prettier --check "src/**/*.{ts,html,css}"
 
+      - name: Lint (eslint)
+        run: npm run lint
+
       - name: Test
         run: npm run test
 

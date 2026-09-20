@@ -1,4 +1,14 @@
 {
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=827846
-  "recommendations": ["angular.ng-template"]
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "angular.ng-template",
+    "tomwhite007.rename-angular-component",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "mikestead.dotenv",
+    "aaron-bond.better-comments",
+    "redhat.vscode-yaml"
+  ]
 }

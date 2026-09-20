@@ -6,7 +6,7 @@ Restores, format-checks (`dotnet csharpier check`), builds, and tests (`dotnet t
 
 ## `frontend-build.yml`
 
-Installs, format-checks (`prettier --check`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes/PRs that touch `frontend/**`.
+Installs, format-checks (`prettier --check`), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes/PRs that touch `frontend/**`.
 
 ## `codeql-analysis.yml`
 
