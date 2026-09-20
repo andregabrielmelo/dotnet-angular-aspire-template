@@ -1,0 +1,28 @@
+<div class="mx-auto max-w-sm p-6">
+  <h1 class="mb-6 text-2xl font-semibold">Confirm your email</h1>
+
+  @switch (state()) {
+    @case (ConfirmationState.Confirming) {
+      <p class="text-sm text-gray-600">Confirming your email…</p>
+    }
+    @case (ConfirmationState.Success) {
+      <p class="rounded-md bg-green-50 p-3 text-sm text-green-700">
+        Your email has been confirmed. You can now log in.
+      </p>
+    }
+    @case (ConfirmationState.Failure) {
+      <p class="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        This confirmation link is invalid or has expired.
+      </p>
+    }
+    @case (ConfirmationState.MissingToken) {
+      <p class="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        This confirmation link is missing its token.
+      </p>
+    }
+  }
+
+  <p class="mt-4 text-sm text-gray-600">
+    <a routerLink="/auth/login" class="text-blue-600 underline">Back to log in</a>
+  </p>
+</div>

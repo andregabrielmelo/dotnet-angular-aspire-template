@@ -1,0 +1,13 @@
+<div class="mx-auto max-w-sm p-6">
+  @if (failed()) {
+    <h1 class="mb-4 text-2xl font-semibold">Sign-in failed</h1>
+    <p class="rounded-md bg-red-50 p-3 text-sm text-red-700">
+      Something went wrong signing you in with Google. Please try again.
+    </p>
+    <p class="mt-4 text-sm text-gray-600">
+      <a routerLink="/auth/login" class="text-blue-600 underline">Back to log in</a>
+    </p>
+  } @else {
+    <p class="text-sm text-gray-600">Signing you in…</p>
+  }
+</div>

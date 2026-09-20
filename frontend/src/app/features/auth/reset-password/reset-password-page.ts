@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth-service';
 
 function passwordsMatchValidator(group: AbstractControl): ValidationErrors | null {
@@ -17,24 +17,26 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 }
 
 @Component({
-  selector: 'app-register',
+  selector: 'app-reset-password',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './register-page.html',
+  templateUrl: './reset-password-page.html',
 })
-export class RegisterPage {
+export class ResetPasswordPage {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly token = this.route.snapshot.queryParamMap.get('token');
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly missingToken = signal(!this.token);
 
   readonly form = this.formBuilder.nonNullable.group(
     {
-      name: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
     },
@@ -42,7 +44,7 @@ export class RegisterPage {
   );
 
   submit(): void {
-    if (this.form.invalid || this.submitting()) {
+    if (this.form.invalid || this.submitting() || !this.token) {
       this.form.markAllAsTouched();
       return;
     }
@@ -50,13 +52,10 @@ export class RegisterPage {
     this.submitting.set(true);
     this.errorMessage.set(null);
 
-    const { name, email, password } = this.form.getRawValue();
-    this.authService.register({ name, email, password }).subscribe({
+    this.authService.resetPassword(this.token, this.form.getRawValue().password).subscribe({
       next: () => {
         this.submitting.set(false);
-        // Registration only creates the account and sends a confirmation email —
-        // it doesn't log the user in.
-        this.router.navigateByUrl('/auth/login?registered=1');
+        this.router.navigateByUrl('/auth/login?reset=1');
       },
       error: (error: HttpErrorResponse) => {
         this.submitting.set(false);
@@ -71,5 +70,5 @@ function extractErrorMessage(error: HttpErrorResponse): string {
   if (errors) {
     return Object.values(errors).flat().join(' ');
   }
-  return 'Registration failed. Please try again.';
+  return 'This reset link is invalid or has expired.';
 }
