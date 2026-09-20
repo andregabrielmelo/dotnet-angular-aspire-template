@@ -120,6 +120,34 @@ public static class ResultExtensions
     }
 
     /// <summary>
+    /// Maps Result to TypedResults for Login/Refresh/ExternalLogin endpoints that return a
+    /// token pair, or Unauthorized/Forbidden on failure.
+    /// </summary>
+    public static Results<Ok<TResponse>, ProblemHttpResult> ToAuthResult<TValue, TResponse>(
+        this Result<TValue> result,
+        Func<TValue, TResponse> mapResponse
+    )
+    {
+        return result.Status switch
+        {
+            ResultStatus.Ok => TypedResults.Ok(mapResponse(result.Value)),
+            ResultStatus.Unauthorized => TypedResults.Problem(
+                title: "Invalid credentials",
+                statusCode: StatusCodes.Status401Unauthorized
+            ),
+            ResultStatus.Forbidden => TypedResults.Problem(
+                title: "Email not confirmed",
+                statusCode: StatusCodes.Status403Forbidden
+            ),
+            _ => TypedResults.Problem(
+                title: "Authentication failed",
+                detail: string.Join("; ", result.Errors),
+                statusCode: StatusCodes.Status400BadRequest
+            ),
+        };
+    }
+
+    /// <summary>
     /// Maps Result to TypedResults for endpoints that return Ok only (like List endpoints)
     /// </summary>
     public static Ok<TResponse> ToOkOnlyResult<TValue, TResponse>(

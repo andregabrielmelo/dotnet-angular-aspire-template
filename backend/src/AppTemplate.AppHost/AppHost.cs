@@ -27,4 +27,8 @@ var frontend = builder
     .WithExternalHttpEndpoints()
     .PublishAsDockerFile();
 
+// The API needs the frontend's actual (dynamically assigned) address to build email
+// confirmation/reset-password links and OAuth redirects - see FrontendOptions.
+api = api.WithReference(frontend);
+
 builder.Build().Run();
