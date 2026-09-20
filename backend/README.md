@@ -5,6 +5,7 @@
 ```bash
 dotnet run --project src/AppTemplate.AppHost   # starts Postgres, the API, and the frontend together
 dotnet build AppTemplate.slnx
+dotnet test AppTemplate.slnx                   # xUnit: AppTemplate.UnitTests + AppTemplate.FunctionalTests
 dotnet csharpier check .                       # formatting, enforced in CI
 ```
 

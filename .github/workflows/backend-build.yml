@@ -48,5 +48,6 @@ jobs:
         working-directory: backend
         run: dotnet build AppTemplate.slnx --configuration Release --no-restore
 
-      # No test projects yet - add one (e.g. `dotnet new xunit -o tests/AppTemplate.UnitTests`)
-      # and a `dotnet test` step here once you have tests to run.
+      - name: Test
+        working-directory: backend
+        run: dotnet test AppTemplate.slnx --configuration Release --no-build --logger "console;verbosity=normal"

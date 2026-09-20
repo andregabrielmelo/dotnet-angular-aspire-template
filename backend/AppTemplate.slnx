@@ -17,4 +17,8 @@
     />
     <Project Path="src/AppTemplate.Web/AppTemplate.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />
+    <Project Path="tests/AppTemplate.FunctionalTests/AppTemplate.FunctionalTests.csproj" />
+  </Folder>
 </Solution>
