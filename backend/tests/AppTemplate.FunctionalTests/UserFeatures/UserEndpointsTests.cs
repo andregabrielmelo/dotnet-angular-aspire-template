@@ -1,59 +1,47 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using AppTemplate.Web.Features.UserFeatures;
+using AppTemplate.FunctionalTests.AuthFeatures;
+using AppTemplate.Web.Features.AuthFeatures;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests.UserFeatures;
 
 public class UserEndpointsTests : IClassFixture<AppTemplateWebApplicationFactory>
 {
+    private readonly AppTemplateWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
     public UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task CreateThenGet_ReturnsTheCreatedUser()
+    public async Task GetById_WithoutBearerToken_ReturnsUnauthorized()
     {
-        var request = new CreateUserRequest
-        {
-            Name = "Ada Lovelace",
-            Email = $"ada-{Guid.NewGuid():N}@example.com",
-            Password = "Passw0rd!",
-        };
+        var response = await _client.GetAsync("/users/1");
 
-        var createResponse = await _client.PostAsJsonAsync("/users", request);
-        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
-
-        var created = await createResponse.Content.ReadFromJsonAsync<CreateUserResponse>();
-        Assert.NotNull(created);
-        Assert.Equal("Ada Lovelace", created!.Name);
-
-        var getResponse = await _client.GetAsync($"/users/{created.Id}");
-        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task Create_WithInvalidEmail_ReturnsValidationProblem()
+    public async Task List_WithoutBearerToken_ReturnsUnauthorized()
     {
-        var request = new CreateUserRequest
-        {
-            Name = "Ada Lovelace",
-            Email = "not-an-email",
-            Password = "Passw0rd!",
-        };
+        var response = await _client.GetAsync("/users");
 
-        var response = await _client.PostAsJsonAsync("/users", request);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetById_WithUnknownId_ReturnsNotFound()
+    public async Task GetById_WithBearerTokenAndUnknownId_ReturnsNotFound()
     {
-        var response = await _client.GetAsync("/users/999999");
+        var accessToken = await AuthTestHelper.RegisterConfirmAndLoginAsync(_factory, _client);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/users/999999");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var response = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
