@@ -1,0 +1,12 @@
+<div class="mx-auto max-w-sm p-6">
+  <h1 class="mb-4 text-2xl font-semibold">Welcome{{ userName ? ', ' + userName : '' }}!</h1>
+  <p class="mb-6 text-sm text-gray-600">You're logged in.</p>
+
+  <button
+    type="button"
+    (click)="logout()"
+    class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
+  >
+    Log out
+  </button>
+</div>

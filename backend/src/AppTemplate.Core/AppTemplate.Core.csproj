@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vogen" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppTemplate.SharedKernel\AppTemplate.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Aggregates\UserAggregate\Events\" />
+    <Folder Include="Aggregates\UserAggregate\Handlers\" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+# Backend and frontend have their own, more thorough .gitignore files.
+# This one covers things that span the whole repo.
+
+# Hugo docs site build output/theme (theme is cloned fresh by the hugo-docs workflow)
+docs/public/
+docs/themes/
+docs/resources/
+docs/.hugo_build.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vs/
+.idea/

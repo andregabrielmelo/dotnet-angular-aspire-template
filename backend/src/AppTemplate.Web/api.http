@@ -1,0 +1,42 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+@host=https://localhost
+@port=7243
+
+// List all users
+GET {{host}}:{{port}}/users
+
+###
+
+// Get a specific user
+@id_to_get=1
+GET {{host}}:{{port}}/users/{{id_to_get}}
+
+###
+
+// Add a new user
+POST {{host}}:{{port}}/users
+Content-Type: application/json
+
+{
+  "name": "John Doe 3",
+  "email": "test@test.com",
+  "phoneNumber": "1234567890"
+}
+
+###
+
+// Update a user
+@id_to_update=3
+PUT {{host}}:{{port}}/users/{{id_to_update}}
+Content-Type: application/json
+
+{
+  "id": {{id_to_update}},
+  "name": "ardalis2"
+}
+
+###
+
+// Delete a user
+@id_to_delete=1
+DELETE {{host}}:{{port}}/users/{{id_to_delete}}

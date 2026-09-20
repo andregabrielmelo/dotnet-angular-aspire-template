@@ -1,0 +1,21 @@
+---
+title: "ADR 005: Vogen for strongly-typed IDs and value objects"
+weight: 50
+---
+
+# ADR 005: Vogen for strongly-typed IDs and value objects
+
+## Status
+Accepted
+
+## Context
+Using raw primitives (`int`, `string`) for entity IDs and simple value objects like names or emails makes it possible to accidentally pass a `UserId` where an `OrderId` is expected, or to construct a `UserName` that's empty or too long, with no compiler help and validation scattered wherever the value is used.
+
+## Decision
+Use [Vogen](https://github.com/SteveDunn/Vogen) source-generated value objects for IDs (`UserId`) and simple domain primitives (`UserName`), each with a `Validate` method that runs on construction. `VogenEfCoreConverters` registers EF Core value converters for them, and `VogenIdValueGenerator` generates new IDs on insert.
+
+## Consequences
+- Type confusion between different ID types becomes a compile error instead of a runtime bug.
+- Validation lives in one place (the value object itself) and can't be bypassed by constructing the type directly - invalid values simply can't exist.
+- Adds a source generator to the build and a small amount of ceremony (an `[EfCoreConverter<T>]` registration in `VogenEfCoreConverters`) for every new value object that needs EF Core persistence.
+- Only worth it for values with real invariants or where type confusion is a real risk - plain DTOs and read-only projections (like `UserDto`, `UserRecord`) intentionally stay as plain records instead.

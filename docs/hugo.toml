@@ -1,0 +1,9 @@
+baseURL = 'https://andregabrielmelo.github.io/dotnet-angular-aspire-template/'
+languageCode = 'en-us'
+title = 'AppTemplate Docs'
+theme = 'hugo-book' # A popular, clean, and minimal docs theme
+
+[params]
+  BookRepo = 'https://github.com/andregabrielmelo/dotnet-angular-aspire-template'
+  BookEditPath = 'edit/main/docs'
+  BookSection = '*'
