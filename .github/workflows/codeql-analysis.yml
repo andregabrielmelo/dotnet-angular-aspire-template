@@ -17,6 +17,9 @@ jobs:
       contents: read
       security-events: write
 
+    env:
+      HUSKY: 0 # skip Directory.Build.targets' git-hooks auto-install - pointless in CI, never commits
+
     strategy:
       fail-fast: false
       matrix:
