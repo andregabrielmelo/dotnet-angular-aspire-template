@@ -22,4 +22,4 @@ It's not a sample application - it's a skeleton with just enough real code (a `U
 
 Use the **Use this template** button on GitHub, then head to [Getting Started]({{< relref "getting-started" >}}) to rename the solution and run it locally.
 
-See [Goals & Design Decisions]({{< relref "design-decisions" >}}) for why the stack is put together the way it is, and [Architecture Decisions]({{< relref "architecture-decisions" >}}) for a record of the specific calls made along the way.
+See [Goals & Design Decisions]({{< relref "design-decisions" >}}) for why the stack is put together the way it is, [Architecture Decisions]({{< relref "architecture-decisions" >}}) for a record of the specific calls made along the way, [Best Practices]({{< relref "best-practices" >}}) for explicit conventions to follow, and [API Reference]({{< relref "api-reference" >}}) for how the OpenAPI docs work.

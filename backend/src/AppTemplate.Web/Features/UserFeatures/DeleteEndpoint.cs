@@ -6,7 +6,6 @@ namespace AppTemplate.Web.Features.UserFeatures;
 
 public sealed class DeleteUserRequest
 {
-    [Required]
     public int UserId { get; init; }
 }
 

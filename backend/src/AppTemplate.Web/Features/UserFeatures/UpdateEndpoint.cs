@@ -8,10 +8,8 @@ namespace AppTemplate.Web.Features.UserFeatures;
 
 public sealed class UpdateUserRequest
 {
-    [Required]
     public int Id { get; set; }
 
-    [Required]
     public required string Name { get; set; }
     public string? PhoneNumber { get; set; }
 }

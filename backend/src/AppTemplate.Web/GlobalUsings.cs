@@ -1,5 +1,4 @@
-﻿global using System.ComponentModel.DataAnnotations;
-global using AppTemplate.SharedKernel;
+﻿global using AppTemplate.SharedKernel;
 global using AppTemplate.UseCases;
 global using Ardalis.Result;
 global using FastEndpoints;

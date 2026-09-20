@@ -56,3 +56,5 @@ Migrations are applied automatically on startup in Development (see `DatabaseCon
 
 - [Goals & Design Decisions]({{< relref "design-decisions" >}}) - why the stack looks the way it does
 - [Architecture Decisions]({{< relref "architecture-decisions" >}}) - specific decisions and their trade-offs
+- [Best Practices]({{< relref "best-practices" >}}) - explicit conventions to follow as the project grows
+- [API Reference]({{< relref "api-reference" >}}) - how the OpenAPI docs work

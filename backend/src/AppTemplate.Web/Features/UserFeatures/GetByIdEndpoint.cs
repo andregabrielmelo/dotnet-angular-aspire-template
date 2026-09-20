@@ -7,7 +7,6 @@ namespace AppTemplate.Web.Features.UserFeatures;
 
 public sealed class GetUserByIdRequest
 {
-    [Required]
     public int Id { get; set; }
 }
 

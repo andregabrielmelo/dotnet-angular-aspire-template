@@ -2,7 +2,9 @@ using AppTemplate.Core.ValueObjects;
 
 namespace AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 
+/// <summary>Read-only existence check (used by CreateUserHandler) - AsNoTracking.</summary>
 public class UserByEmailSpecification : Specification<User>
 {
-    public UserByEmailSpecification(EmailAddress email) => Query.Where(user => user.Email == email);
+    public UserByEmailSpecification(EmailAddress email) =>
+        Query.Where(user => user.Email == email).AsNoTracking();
 }
