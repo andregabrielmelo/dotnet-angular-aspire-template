@@ -1,14 +1,11 @@
-﻿using System.Text.RegularExpressions;
+﻿namespace AppTemplate.Core.ValueObjects;
 
-namespace AppTemplate.Core.ValueObjects;
-
-// https://www.w3.org/Protocols/rfc822/#z8
+// Intentionally naive (checks for one '@', not first/last char) rather than a strict regex -
+// mirrors FluentValidation's default EmailAddress() / ASP.NET Core's EmailAddressAttribute.
+// A syntactically-stricter regex can't confirm the address is real anyway; Register already
+// does that via an emailed confirmation link.
 public class EmailAddress : ValueObject
 {
-    private static readonly Regex EmailRegex = new(
-        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled
-    );
     public string Value { get; private set; }
 
     public EmailAddress(string value)
@@ -16,7 +13,8 @@ public class EmailAddress : ValueObject
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("Email cannot be empty");
 
-        if (!EmailRegex.IsMatch(value))
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1 || atIndex != value.LastIndexOf('@'))
             throw new ArgumentException("Invalid email format");
 
         Value = value;
