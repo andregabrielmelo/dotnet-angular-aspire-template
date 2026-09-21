@@ -16,6 +16,9 @@ public static class MiddlewareConfigurations
             app.UseHsts();
         }
 
+        app.UseAuthentication();
+        app.UseAuthorization();
+
         app.UseFastEndpoints();
 
         if (app.Environment.IsDevelopment())

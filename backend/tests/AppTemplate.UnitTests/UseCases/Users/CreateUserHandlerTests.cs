@@ -2,7 +2,6 @@ using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Users.Create;
 using Ardalis.Result;
-using Microsoft.AspNetCore.Identity;
 using NSubstitute;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
@@ -10,11 +9,8 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class CreateUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly IPasswordHasher<User> _passwordHasher = Substitute.For<
-        IPasswordHasher<User>
-    >();
 
-    private CreateUserHandler CreateHandler() => new(_repository, _passwordHasher);
+    private CreateUserHandler CreateHandler() => new(_repository);
 
     [Fact]
     public async Task Handle_WithNewEmail_CreatesUser()
@@ -25,12 +21,10 @@ public class CreateUserHandlerTests
         _repository
             .AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(callInfo.Arg<User>()));
-        _passwordHasher.HashPassword(Arg.Any<User>(), "Passw0rd!").Returns("hashed-password");
 
         var command = new CreateUserCommand(
             UserName.From("Ada Lovelace"),
             new EmailAddress("ada@example.com"),
-            "Passw0rd!",
             ""
         );
 
@@ -40,9 +34,7 @@ public class CreateUserHandlerTests
         await _repository
             .Received(1)
             .AddAsync(
-                Arg.Is<User>(u =>
-                    u.Name.Value == "Ada Lovelace" && u.Password == "hashed-password"
-                ),
+                Arg.Is<User>(u => u.Name.Value == "Ada Lovelace"),
                 Arg.Any<CancellationToken>()
             );
     }
@@ -52,8 +44,7 @@ public class CreateUserHandlerTests
     {
         var existingUser = User.Create(
             UserName.From("Existing User"),
-            new EmailAddress("ada@example.com"),
-            "hash"
+            new EmailAddress("ada@example.com")
         );
         _repository
             .FirstOrDefaultAsync(Arg.Any<UserByEmailSpecification>(), Arg.Any<CancellationToken>())
@@ -62,7 +53,6 @@ public class CreateUserHandlerTests
         var command = new CreateUserCommand(
             UserName.From("Ada Lovelace"),
             new EmailAddress("ada@example.com"),
-            "Passw0rd!",
             ""
         );
 

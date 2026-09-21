@@ -1,6 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
-using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.Infrastructure.Data;
 
@@ -10,7 +9,7 @@ public class SeedData
 
     public static async Task InitializeAsync(ApplicationDatabaseContext dbContext)
     {
-        if (await dbContext.Users.AnyAsync())
+        if (await dbContext.DomainUsers.AnyAsync())
             return; // DB has been seeded
 
         await PopulateTestDataAsync(dbContext);
@@ -24,16 +23,13 @@ public class SeedData
             names.Add($"User {i}");
         }
 
-        // Seed users are fixtures for pagination demos, not real accounts - a single shared
-        // placeholder password hash is enough (not meant to be logged into meaningfully).
-        var password = new PasswordHasher<User>().HashPassword(null!, "Seeded123!");
-
+        // Seed users are fixtures for pagination demos, not real accounts - they have no
+        // Identity credentials and are not meant to be logged into.
         var users = names.Select(name => new User(
             UserName.From(name),
-            new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com"),
-            password
+            new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
         ));
-        dbContext.Users.AddRange(users);
+        dbContext.DomainUsers.AddRange(users);
         await dbContext.SaveChangesAsync();
     }
 }

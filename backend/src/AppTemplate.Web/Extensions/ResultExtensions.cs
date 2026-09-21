@@ -129,4 +129,34 @@ public static class ResultExtensions
     {
         return TypedResults.Ok(mapResponse(result.Value));
     }
+
+    /// <summary>
+    /// Maps Result to TypedResults for auth endpoints (Register/Login/Refresh) that return Ok,
+    /// ValidationProblem, or a 401 ProblemHttpResult on bad credentials/tokens.
+    /// </summary>
+    public static Results<Ok<TResponse>, ValidationProblem, ProblemHttpResult> ToAuthResult<
+        TValue,
+        TResponse
+    >(this Result<TValue> result, Func<TValue, TResponse> mapResponse)
+    {
+        return result.Status switch
+        {
+            ResultStatus.Ok => TypedResults.Ok(mapResponse(result.Value)),
+            ResultStatus.Invalid => TypedResults.ValidationProblem(
+                result
+                    .ValidationErrors.GroupBy(e => e.Identifier ?? string.Empty)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            ),
+            ResultStatus.Unauthorized => TypedResults.Problem(
+                title: "Unauthorized",
+                detail: "Invalid credentials or token.",
+                statusCode: StatusCodes.Status401Unauthorized
+            ),
+            _ => TypedResults.Problem(
+                title: "Request failed",
+                detail: string.Join("; ", result.Errors),
+                statusCode: StatusCodes.Status400BadRequest
+            ),
+        };
+    }
 }

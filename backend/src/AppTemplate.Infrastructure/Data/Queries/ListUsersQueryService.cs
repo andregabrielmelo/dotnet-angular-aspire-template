@@ -16,7 +16,7 @@ public class ListUsersQueryService : IListUsersQueryService
     public async Task<PagedResult<UserDto>> ListAsync(int page, int perPage)
     {
         var items = await _db
-            .Users.FromSqlRaw(
+            .DomainUsers.FromSqlRaw(
                 "SELECT id, name, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
             )
             .OrderBy(c => c.Id)
@@ -26,7 +26,7 @@ public class ListUsersQueryService : IListUsersQueryService
             .AsNoTracking()
             .ToListAsync();
 
-        int totalCount = await _db.Users.CountAsync();
+        int totalCount = await _db.DomainUsers.CountAsync();
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 

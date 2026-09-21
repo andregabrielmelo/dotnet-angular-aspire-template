@@ -12,11 +12,7 @@ public class DeleteUserHandlerTests
     [Fact]
     public async Task Handle_WithExistingUser_DeletesAndReturnsSuccess()
     {
-        var user = User.Create(
-            UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com"),
-            "hash"
-        );
+        var user = User.Create(UserName.From("Ada Lovelace"), new EmailAddress("ada@example.com"));
         _repository.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await new DeleteUserHandler(_repository).Handle(

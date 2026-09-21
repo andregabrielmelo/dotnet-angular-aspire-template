@@ -21,7 +21,6 @@ public class UserEndpointsTests : IClassFixture<AppTemplateWebApplicationFactory
         {
             Name = "Ada Lovelace",
             Email = $"ada-{Guid.NewGuid():N}@example.com",
-            Password = "Passw0rd!",
         };
 
         var createResponse = await _client.PostAsJsonAsync("/users", request);
@@ -38,12 +37,7 @@ public class UserEndpointsTests : IClassFixture<AppTemplateWebApplicationFactory
     [Fact]
     public async Task Create_WithInvalidEmail_ReturnsValidationProblem()
     {
-        var request = new CreateUserRequest
-        {
-            Name = "Ada Lovelace",
-            Email = "not-an-email",
-            Password = "Passw0rd!",
-        };
+        var request = new CreateUserRequest { Name = "Ada Lovelace", Email = "not-an-email" };
 
         var response = await _client.PostAsJsonAsync("/users", request);
 

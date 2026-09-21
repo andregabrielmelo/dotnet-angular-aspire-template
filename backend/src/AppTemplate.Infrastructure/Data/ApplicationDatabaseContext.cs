@@ -1,12 +1,18 @@
 using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace AppTemplate.Infrastructure.Data;
 
 public class ApplicationDatabaseContext(DbContextOptions<ApplicationDatabaseContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser>(options)
 {
-    public DbSet<User> Users => Set<User>();
+    // Named DomainUsers (not Users) because IdentityDbContext<ApplicationUser> already declares
+    // its own DbSet<ApplicationUser> Users for Identity's credential records.
+    public DbSet<User> DomainUsers => Set<User>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     // Override OnModelCreating to apply class configurations from the assembly
     protected override void OnModelCreating(ModelBuilder modelBuilder)

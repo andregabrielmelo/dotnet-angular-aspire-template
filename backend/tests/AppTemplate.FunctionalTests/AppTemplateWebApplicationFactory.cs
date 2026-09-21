@@ -25,6 +25,14 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         // supply a placeholder so that guard passes; it's never actually connected to.
         builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
 
+        // Same reasoning as above: AddAuthConfigurations reads Jwt:SigningKey synchronously at
+        // service-registration time (for AddAuthenticationJwtBearer), before ConfigureServices
+        // runs - there's no appsettings.Testing.json, so supply a fixed, non-secret test-only key.
+        builder.UseSetting(
+            "Jwt:SigningKey",
+            "functional-tests-only-signing-key-not-used-anywhere-else-0123456789"
+        );
+
         builder.ConfigureServices(services =>
         {
             // Removing just DbContextOptions<T> leaves EF Core's internal per-provider

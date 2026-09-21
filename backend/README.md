@@ -18,4 +18,15 @@ dotnet ef migrations add YourMigrationName \
   -o Data/Migrations
 ```
 
+Authentication (ASP.NET Core Identity + JWT) needs a signing key. A development-only placeholder
+ships in `appsettings.Development.json` so `dotnet run` works out of the box; override it locally
+without committing anything by running:
+
+```bash
+dotnet user-secrets set "Jwt:SigningKey" "<a long random string>" --project src/AppTemplate.Web
+```
+
+In any shared or production environment, set the `Jwt__SigningKey` environment variable instead -
+the app throws on startup if no signing key is configured outside Development.
+
 See the [docs site](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/) for the architecture, design decisions, and ADRs - start with [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/getting-started/).

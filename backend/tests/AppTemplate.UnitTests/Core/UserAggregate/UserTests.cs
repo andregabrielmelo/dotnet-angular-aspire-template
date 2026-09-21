@@ -3,20 +3,15 @@ namespace AppTemplate.UnitTests.Core.UserAggregate;
 public class UserTests
 {
     private static User CreateUser() =>
-        User.Create(
-            UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com"),
-            "hashed-password"
-        );
+        User.Create(UserName.From("Ada Lovelace"), new EmailAddress("ada@example.com"));
 
     [Fact]
-    public void Create_SetsNameEmailAndPassword()
+    public void Create_SetsNameAndEmail()
     {
         var user = CreateUser();
 
         Assert.Equal("Ada Lovelace", user.Name.Value);
         Assert.Equal("ada@example.com", user.Email.Value);
-        Assert.Equal("hashed-password", user.Password);
         Assert.Null(user.PhoneNumber);
     }
 
@@ -50,15 +45,5 @@ public class UserTests
         user.UpdatePhoneNumber(phoneNumber);
 
         Assert.Equal(phoneNumber, user.PhoneNumber);
-    }
-
-    [Fact]
-    public void UpdatePassword_ChangesPassword()
-    {
-        var user = CreateUser();
-
-        user.UpdatePassword("new-hashed-password");
-
-        Assert.Equal("new-hashed-password", user.Password);
     }
 }
