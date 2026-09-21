@@ -30,6 +30,7 @@ bld/
 [Bb]in/
 # Stray artifact some dotnet-ef/MSBuildWorkspace runs create literally named "bin\Debug" (not bin/Debug)
 [Bb]in\\*
+binDebug/
 [Oo]bj/
 [Oo]ut/
 [Ll]og/
