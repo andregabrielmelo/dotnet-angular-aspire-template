@@ -16,7 +16,7 @@ Explicit guidelines for projects built from this template, so every project that
 - EF Core: avoid queries in loops (N+1) - eager-load or batch instead. Reach for compiled queries only once a specific query is a measured hot path, not by default.
 - Inject `ILogger<T>`, never call the static `Serilog.Log` directly. Use message templates (`"{UserId} created", id`), not string interpolation - it's what makes structured log fields searchable. Configuration belongs in `appsettings.json`'s `Serilog` section (already the case in `LoggerConfigurations.cs` via `ReadFrom.Configuration`), not hardcoded in C#.
 - Tests follow Arrange-Act-Assert, one behavior per test. See `AppTemplate.UnitTests` for the current shape.
-- **Known gap**: there's no authentication/authorization wired up yet - every backend endpoint is `AllowAnonymous()`, even though the frontend has login/register scaffolding. Don't treat that scaffolding as "auth is handled" - it isn't, yet.
+- Authentication is ASP.NET Core Identity (`ApplicationUser`, in Infrastructure) issuing JWT access + refresh tokens via `FastEndpoints.Security`, kept deliberately separate from the domain `User` aggregate in Core (linked by `ApplicationUser.DomainUserId`) so Core stays framework-free - see `AppTemplate.UseCases/Auth/` and `AppTemplate.Infrastructure/Identity/`. `Register`/`Login`/`Refresh` are `AllowAnonymous()`; every other endpoint requires a valid bearer token by default now that authentication middleware is wired up - if you add a new anonymous endpoint, call `AllowAnonymous()` explicitly and mean it.
 
 ## Angular
 

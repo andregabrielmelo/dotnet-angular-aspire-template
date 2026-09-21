@@ -27,8 +27,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(entity => entity.Email).IsUnique();
 
-        builder.Property(entity => entity.Password).IsRequired();
-
         builder.OwnsOne(builder => builder.PhoneNumber);
     }
 }

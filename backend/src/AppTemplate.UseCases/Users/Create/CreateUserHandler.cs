@@ -1,21 +1,14 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
-using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.UseCases.Users.Create;
 
-public record CreateUserCommand(
-    UserName Name,
-    EmailAddress Email,
-    string Password,
-    string PhoneNumber
-) : ICommand<Result<UserId>>;
+public record CreateUserCommand(UserName Name, EmailAddress Email, string PhoneNumber)
+    : ICommand<Result<UserId>>;
 
-public class CreateUserHandler(
-    IRepository<User> _userRepository,
-    IPasswordHasher<User> _passwordHasher
-) : ICommandHandler<CreateUserCommand, Result<UserId>>
+public class CreateUserHandler(IRepository<User> _userRepository)
+    : ICommandHandler<CreateUserCommand, Result<UserId>>
 {
     public async ValueTask<Result<UserId>> Handle(
         CreateUserCommand command,
@@ -34,8 +27,7 @@ public class CreateUserHandler(
             );
         }
 
-        var password = _passwordHasher.HashPassword(null!, command.Password);
-        var newUser = User.Create(command.Name, command.Email, password);
+        var newUser = User.Create(command.Name, command.Email);
         if (!string.IsNullOrEmpty(command.PhoneNumber))
         {
             var phoneNumber = new PhoneNumber("+1", command.PhoneNumber, String.Empty);

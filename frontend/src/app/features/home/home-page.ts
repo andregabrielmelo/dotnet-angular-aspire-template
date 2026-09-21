@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth-service';
 
@@ -12,10 +12,9 @@ export class HomePage {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly userName = this.authService.currentUserName();
+  protected readonly userName = computed(() => this.authService.currentUser()?.name ?? null);
 
   logout(): void {
-    this.authService.logout();
-    this.router.navigateByUrl('/register');
+    this.authService.logout().subscribe(() => this.router.navigateByUrl('/auth/login'));
   }
 }

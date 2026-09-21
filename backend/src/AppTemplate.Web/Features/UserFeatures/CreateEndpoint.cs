@@ -11,7 +11,6 @@ public sealed class CreateUserRequest
 
     public string Email { get; set; } = String.Empty;
 
-    public string Password { get; set; } = String.Empty;
     public string? PhoneNumber { get; set; } = null;
 }
 
@@ -32,12 +31,11 @@ public class CreateEndpoint(IMediator _mediator)
         {
             s.Summary = "Create a new user";
             s.Description =
-                "Creates a new user with the specified name, email, password, and phone number.";
+                "Creates a new user profile with the specified name, email, and phone number. This does not create login credentials - use POST /register for a self-service account.";
             s.ExampleRequest = new CreateUserRequest
             {
                 Name = "Sample User",
                 Email = "sample.user@example.com",
-                Password = "Passw0rd!",
             };
             s.ResponseExamples[201] = new CreateUserResponse(Id: 1, Name: "Teste");
 
@@ -62,7 +60,6 @@ public class CreateEndpoint(IMediator _mediator)
         var command = new CreateUserCommand(
             UserName.From(request.Name),
             new EmailAddress(request.Email),
-            request.Password,
             request.PhoneNumber ?? String.Empty
         );
         var result = await _mediator.Send(command, cancellationToken);
@@ -90,11 +87,5 @@ public sealed class CreateUserValidator : Validator<CreateUserRequest>
             .WithMessage("Email is required")
             .Matches(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")
             .WithMessage("Email must be a valid email address");
-
-        RuleFor(x => x.Password)
-            .NotEmpty()
-            .WithMessage("Password is required")
-            .MinimumLength(8)
-            .WithMessage("Password must be at least 8 characters");
     }
 }
