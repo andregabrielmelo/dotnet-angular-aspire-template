@@ -1,4 +1,4 @@
-var builder = DistributedApplication.CreateBuilder(args);
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Postgre SQL Server container
 var postgres = builder
@@ -34,6 +34,10 @@ var keycloak = builder
     .WithLifetime(ContainerLifetime.Persistent)
     .WaitFor(mailpit);
 
+// Redis: HybridCache's distributed (L2) cache and the output cache store, shared by every
+// API instance so cache invalidations reach all of them.
+var cache = builder.AddRedis("cache");
+
 // register the API project and link the DB
 var api = builder
     .AddProject<Projects.AppTemplate_Web>("web")
@@ -42,6 +46,8 @@ var api = builder
     .WaitFor(applicationDatabase)
     .WithReference(keycloak)
     .WaitFor(keycloak)
+    .WithReference(cache)
+    .WaitFor(cache)
     .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
     .WithHttpEndpoint(name: "api-http");
 
