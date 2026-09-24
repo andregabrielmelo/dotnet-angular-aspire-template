@@ -55,7 +55,7 @@ var frontend = builder
 // The browser's single entry point: owns the session cookie, runs the OIDC flow against
 // Keycloak, and proxies /api to the Web API (adding the access token) and everything else to
 // the Angular dev server. Its port is pinned because the realm's redirect URIs point at it.
-builder
+var backendForFrontend = builder
     .AddProject<Projects.AppTemplate_BackendForFrontend>(
         "backend-for-frontend",
         launchProfileName: null
@@ -70,5 +70,7 @@ builder
     .WithReference(frontend.GetEndpoint("http"))
     .WaitFor(frontend)
     .WithExternalHttpEndpoints();
+
+ExternalIdentityProviders.Configure(builder, keycloak, backendForFrontend);
 
 builder.Build().Run();
