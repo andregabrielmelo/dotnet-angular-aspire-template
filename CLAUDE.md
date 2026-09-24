@@ -81,6 +81,12 @@ Caching (ADR 011):
 - **Output caching** stores whole responses: `GET /users` uses the `users-list` policy with `AuthorizedSharedResponsePolicy`, which caches authenticated responses that are the same for every authorized caller. `UseOutputCache` must stay after `UseAuthorization`. The backend for frontend caches `/providers`.
 - **Invalidation**: user entries and lists carry the tag `CacheTags.Users`, and every user write calls `ICacheInvalidator.InvalidateAsync(CacheTags.Users)`, which evicts both layers. A new cached read needs a tag and an invalidation call in each write that affects it.
 
+Background jobs (ADR 012) use Hangfire with Postgres storage (schema `hangfire`):
+- **Structure:** job classes in `Infrastructure/Jobs` are thin adapters that take primitive arguments, dispatch a Mediator command, and throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire. Jobs must be idempotent, because Hangfire runs them at least once.
+- **Current jobs:** `WelcomeEmailJob` (enqueued when `/users/me` provisions a user; the `emails` queue; guarded by `User.WelcomeEmailSentAtUtc`) and `SyncUserProfilesJob` (recurring hourly; copies names and emails from Keycloak).
+- **Dashboard:** `/jobs` on the Web API, Development only, local requests only.
+- **Tests:** functional tests use in-memory storage per host with `BackgroundJobs:RunServer=false`, a no-op Hangfire `ILogProvider` (Hangfire's logging is static global state), and `FakeEmailSender`. They run job classes directly.
+
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
 Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):

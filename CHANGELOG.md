@@ -6,6 +6,8 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Background jobs with Hangfire, stored in the application's Postgres. A welcome email goes out after sign-up: idempotent, retried, and sent through Mailpit in development. An hourly job syncs user names and emails from Keycloak. The jobs dashboard is available in Development. See ADR 012.
+
 - Caching:
   - HybridCache (in-memory L1 + Redis L2, with stampede protection) for user reads, including the `/users/me` lookup the SPA makes on every page load.
   - Output caching for the user list (shared between authorized callers, gated by `users:read`) and the backend for frontend's `/providers`.
@@ -33,6 +35,9 @@ All notable changes to **this template** are documented here (not changes to pro
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
 
 ### Fixed
+
+- `MimeKitEmailSender` disconnected with an already-cancelled token, so every send threw after delivering the message. It now takes a `CancellationToken` and no longer logs recipient addresses.
+- The development `Mailserver` setting used the key `Server` instead of `Hostname`, so it was ignored.
 
 - The users list query's raw SQL didn't select every mapped column (`email`, `external_id`), which breaks entity materialization on Postgres.
 
