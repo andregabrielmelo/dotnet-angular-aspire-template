@@ -1,9 +1,11 @@
 using AppTemplate.Infrastructure.Data;
+using AppTemplate.UseCases.Users.ForgotPassword;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AppTemplate.FunctionalTests;
 
@@ -19,6 +21,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"AppTemplateFunctionalTests-{Guid.NewGuid()}";
 
+    /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
+    public FakePasswordResetService PasswordResetService { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -27,6 +32,8 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         // missing, before ConfigureServices below gets a chance to replace the DbContext -
         // supply a placeholder so that guard passes; it's never actually connected to.
         builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
+        // KeycloakAdminOptions is validated on start; the real client is replaced below.
+        builder.UseSetting("Keycloak:Admin:ClientSecret", "functional-tests");
 
         builder.ConfigureServices(services =>
         {
@@ -48,6 +55,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<ApplicationDatabaseContext>(options =>
                 options.UseInMemoryDatabase(_databaseName)
             );
+
+            services.RemoveAll<IPasswordResetService>();
+            services.AddSingleton<IPasswordResetService>(PasswordResetService);
 
             services
                 .AddAuthentication(options =>
