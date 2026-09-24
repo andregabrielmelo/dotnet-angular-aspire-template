@@ -1,4 +1,5 @@
 ﻿using AppTemplate.UseCases.Users.ForgotPassword;
+using AppTemplate.UseCases.Users.SyncProfiles;
 using Duende.AccessTokenManagement;
 using Microsoft.Extensions.Options;
 
@@ -41,6 +42,15 @@ public static class IdentityServiceExtensions
 
         services
             .AddHttpClient<IPasswordResetService, KeycloakPasswordResetService>(
+                (provider, httpClient) =>
+                    httpClient.BaseAddress = provider
+                        .GetRequiredService<IOptions<KeycloakAdminOptions>>()
+                        .Value.BaseAddress
+            )
+            .AddClientCredentialsTokenHandler(KeycloakAdminClient);
+
+        services
+            .AddHttpClient<IIdentityProviderDirectory, KeycloakUserDirectory>(
                 (provider, httpClient) =>
                     httpClient.BaseAddress = provider
                         .GetRequiredService<IOptions<KeycloakAdminOptions>>()

@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
+using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -52,6 +53,8 @@ public static class InfrastructureServiceExtensions
         services
             .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
             .AddScoped<IListUsersQueryService, ListUsersQueryService>();
+
+        services.AddBackgroundJobs(config, connectionString);
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
