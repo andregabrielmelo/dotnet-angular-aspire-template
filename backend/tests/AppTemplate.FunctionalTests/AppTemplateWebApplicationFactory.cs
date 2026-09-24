@@ -1,4 +1,5 @@
 using AppTemplate.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,8 @@ namespace AppTemplate.FunctionalTests;
 /// tests exercise the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline without
 /// needing a real database. "Testing" environment keeps Program.cs from running real
 /// migrations against it (EF Core's InMemory provider doesn't support them).
+/// Keycloak JWT validation is replaced by <see cref="TestAuthHandler"/> - use
+/// <see cref="CreateAuthenticatedClient"/> for calls that need a signed-in user.
 /// </summary>
 public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
 {
@@ -45,6 +48,25 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<ApplicationDatabaseContext>(options =>
                 options.UseInMemoryDatabase(_databaseName)
             );
+
+            services
+                .AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                    options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthHandler.SchemeName,
+                    _ => { }
+                );
         });
+    }
+
+    /// <summary>A client whose requests are authenticated as the given <c>sub</c>.</summary>
+    public HttpClient CreateAuthenticatedClient(string subject)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
+        return client;
     }
 }
