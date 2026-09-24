@@ -1,4 +1,4 @@
-var builder = DistributedApplication.CreateBuilder(args);
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Postgre SQL Server container
 var postgres = builder
@@ -34,6 +34,10 @@ var keycloak = builder
     .WithLifetime(ContainerLifetime.Persistent)
     .WaitFor(mailpit);
 
+// Redis: HybridCache's distributed (L2) cache and the output cache store, shared by every
+// API instance so cache invalidations reach all of them.
+var cache = builder.AddRedis("cache");
+
 // register the API project and link the DB
 var api = builder
     .AddProject<Projects.AppTemplate_Web>("web")
@@ -42,8 +46,25 @@ var api = builder
     .WaitFor(applicationDatabase)
     .WithReference(keycloak)
     .WaitFor(keycloak)
+    .WithReference(cache)
+    .WaitFor(cache)
     .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
-    .WithHttpEndpoint(name: "api-http");
+    // Background jobs (welcome emails) send through Mailpit too.
+    .WithEnvironment(
+        "Mailserver__Hostname",
+        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Host)
+    )
+    .WithEnvironment(
+        "Mailserver__Port",
+        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Port)
+    )
+    .WaitFor(mailpit)
+    .WithHttpEndpoint(name: "api-http")
+    // Hangfire dashboard (Development only, local requests only).
+    .WithUrlForEndpoint(
+        "http",
+        _ => new ResourceUrlAnnotation { Url = "/jobs", DisplayText = "Jobs dashboard" }
+    );
 
 // Angular dev server - only reached through the backend for frontend, never directly.
 var frontend = builder
@@ -55,7 +76,7 @@ var frontend = builder
 // The browser's single entry point: owns the session cookie, runs the OIDC flow against
 // Keycloak, and proxies /api to the Web API (adding the access token) and everything else to
 // the Angular dev server. Its port is pinned because the realm's redirect URIs point at it.
-builder
+var backendForFrontend = builder
     .AddProject<Projects.AppTemplate_BackendForFrontend>(
         "backend-for-frontend",
         launchProfileName: null
@@ -70,5 +91,7 @@ builder
     .WithReference(frontend.GetEndpoint("http"))
     .WaitFor(frontend)
     .WithExternalHttpEndpoints();
+
+ExternalIdentityProviders.Configure(builder, keycloak, backendForFrontend);
 
 builder.Build().Run();

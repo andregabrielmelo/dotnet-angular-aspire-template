@@ -1,5 +1,9 @@
+﻿using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.UseCases.Users.ForgotPassword;
+using Hangfire;
+using Hangfire.InMemory;
+using Hangfire.Logging;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -24,6 +28,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
     public FakePasswordResetService PasswordResetService { get; } = new();
 
+    /// <summary>Records emails instead of sending them over SMTP.</summary>
+    public FakeEmailSender EmailSender { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -34,6 +41,10 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
         // KeycloakAdminOptions is validated on start; the real client is replaced below.
         builder.UseSetting("Keycloak:Admin:ClientSecret", "functional-tests");
+        builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
+        // Jobs are enqueued into in-memory storage (below) but never executed in the
+        // background - tests run job classes directly when they need to.
+        builder.UseSetting("BackgroundJobs:RunServer", "false");
 
         builder.ConfigureServices(services =>
         {
@@ -59,6 +70,18 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IPasswordResetService>();
             services.AddSingleton<IPasswordResetService>(PasswordResetService);
 
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(EmailSender);
+
+            // Hangfire's log provider is global: keep it off any single test host's
+            // (disposable) ILoggerFactory, since hosts run in parallel.
+            services.AddSingleton<ILogProvider>(NoOpHangfireLogProvider.Instance);
+
+            // One isolated store per test host (never Hangfire's global JobStorage.Current),
+            // created lazily so it picks up the log provider above.
+            services.RemoveAll<JobStorage>();
+            services.AddSingleton<JobStorage>(_ => new InMemoryStorage());
+
             services
                 .AddAuthentication(options =>
                 {
@@ -72,11 +95,21 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
-    /// <summary>A client whose requests are authenticated as the given <c>sub</c>.</summary>
-    public HttpClient CreateAuthenticatedClient(string subject)
+    /// <summary>
+    /// A client whose requests are authenticated as the given <c>sub</c>, holding the given
+    /// API permissions (Keycloak client roles).
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient(string subject, params string[] permissions)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
+        if (permissions.Length > 0)
+        {
+            client.DefaultRequestHeaders.Add(
+                TestAuthHandler.PermissionsHeader,
+                string.Join(',', permissions)
+            );
+        }
         return client;
     }
 }

@@ -1,5 +1,7 @@
-﻿using AppTemplate.UseCases.Users;
+﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
+using AppTemplate.Web.Configurations;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -32,6 +34,9 @@ public class ListEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users");
+        Policies(Permission.UsersRead);
+        // The list is the same for everyone allowed to read it; user writes evict it.
+        Options(x => x.CacheOutput(CachingConfigurations.UsersListPolicy));
 
         Summary(s =>
         {
@@ -56,6 +61,7 @@ public class ListEndpoint(IMediator mediator)
                 $"Page size 1–{Constants.MAX_PAGE_SIZE} (default {Constants.DEFAULT_PAGE_SIZE})";
 
             s.Responses[200] = "Paginated list of users returned successfully";
+            s.Responses[403] = $"Requires the {Permission.UsersRead} permission";
             s.Responses[400] = "Invalid pagination parameters";
         });
 
@@ -129,7 +135,7 @@ public sealed class ListUsersMapper
     public override UserListResponse FromEntity(UseCases.PagedResult<UserDto> e)
     {
         var items = e
-            .Items.Select(p => new UserRecord(p.Id.Value, p.Name.Value, p.PhoneNumber.ToString()))
+            .Items.Select(p => new UserRecord(p.Id.Value, p.Name.Value, p.PhoneNumber?.ToString()))
             .ToList();
 
         return new UserListResponse(items, e.Page, e.PerPage, e.TotalCount, e.TotalPages);

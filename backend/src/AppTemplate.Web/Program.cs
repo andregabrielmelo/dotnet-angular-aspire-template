@@ -1,3 +1,4 @@
+﻿using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
 
@@ -15,6 +16,8 @@ startupLogger.LogInformation("Starting web host");
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, builder);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
 builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
+builder.Services.AddAuthorizationConfigurations(startupLogger, builder);
+builder.Services.AddCachingConfigurations(startupLogger, builder);
 
 builder
     .Services.AddFastEndpoints()
@@ -36,6 +39,9 @@ if (app.Environment.IsDevelopment())
 {
     await app.StartDatabase();
 }
+
+app.Services.RegisterRecurringJobs();
+app.MapBackgroundJobsDashboard();
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 

@@ -1,6 +1,9 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Caching;
+using AppTemplate.UseCases.Jobs;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.GetOrCreateCurrent;
 
@@ -9,25 +12,46 @@ public record CurrentUserDto(UserId Id, UserName Name, EmailAddress Email);
 /// <summary>
 /// Just-in-time provisioning: registration happens in the OpenID Connect provider (Keycloak),
 /// so the domain <see cref="User"/> row is created the first time that identity calls the API.
+/// Called on every page load of the SPA, so the existing-user lookup goes through HybridCache.
 /// </summary>
 public record GetOrCreateCurrentUserCommand(string ExternalId, UserName Name, EmailAddress Email)
     : ICommand<Result<CurrentUserDto>>;
 
-public class GetOrCreateCurrentUserHandler(IRepository<User> _repository)
-    : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
+public class GetOrCreateCurrentUserHandler(
+    IRepository<User> _repository,
+    HybridCache _cache,
+    ICacheInvalidator _cacheInvalidator,
+    IBackgroundJobScheduler _jobs
+) : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
 {
     public async ValueTask<Result<CurrentUserDto>> Handle(
         GetOrCreateCurrentUserCommand command,
         CancellationToken cancellationToken
     )
     {
-        var existingUser = await _repository.FirstOrDefaultAsync(
-            new UserByExternalIdSpecification(command.ExternalId),
+        var existingUser = await _cache.GetOrCreateAsync(
+            CachedUser.KeyByExternalId(command.ExternalId),
+            (_repository, command.ExternalId),
+            static async (state, token) =>
+            {
+                var (repository, externalId) = state;
+                var entity = await repository.FirstOrDefaultAsync(
+                    new UserByExternalIdSpecification(externalId),
+                    token
+                );
+                return entity is null ? null : CachedUser.FromEntity(entity);
+            },
+            CachedUser.EntryOptions,
+            CachedUser.Tags,
             cancellationToken
         );
         if (existingUser is not null)
         {
-            return ToDto(existingUser);
+            return new CurrentUserDto(
+                UserId.From(existingUser.Id),
+                UserName.From(existingUser.Name),
+                new EmailAddress(existingUser.Email)
+            );
         }
 
         // Email is unique in the domain model too - a different identity already claiming this
@@ -43,6 +67,12 @@ public class GetOrCreateCurrentUserHandler(IRepository<User> _repository)
 
         var newUser = User.Create(command.ExternalId, command.Name, command.Email);
         var createdUser = await _repository.AddAsync(newUser, cancellationToken);
+
+        // Drops the cached "no such user" for this identity, and user lists that lack it.
+        await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
+
+        // Sending email is slow and can fail - never make the sign-in request wait on it.
+        _jobs.EnqueueWelcomeEmail(createdUser.Id);
 
         return ToDto(createdUser);
     }

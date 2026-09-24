@@ -9,14 +9,15 @@ namespace AppTemplate.FunctionalTests.AuthenticationFeatures;
 public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    // Throttling is per client IP, so every test uses its own address to stay independent.
+    private static int _nextClientAddress;
+
+    // Throttling is per client IP, so every client gets its own address. A counter (not a
+    // random number) guarantees two tests never share a throttling window.
     private HttpClient CreateAnonymousClient()
     {
+        var n = Interlocked.Increment(ref _nextClientAddress);
         var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Forwarded-For",
-            $"10.0.{Random.Shared.Next(0, 255)}.{Random.Shared.Next(1, 255)}"
-        );
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.0.{n / 250}.{n % 250 + 1}");
         return client;
     }
 

@@ -72,6 +72,21 @@ Keycloak is the OpenID Connect provider and owns credentials, registration and l
 
 Password reset (ADR 008) is `POST /password-reset`: anonymous, throttled, and always 202. It goes through `IPasswordResetService` (UseCases). `Infrastructure/Identity/KeycloakPasswordResetService` implements it by calling Keycloak's Admin API `execute-actions-email` (`UPDATE_PASSWORD`) as the `apptemplate-user-admin` service account, using client credentials via Duende.AccessTokenManagement and settings from `KeycloakAdminOptions` (`Keycloak:Admin`). Functional tests replace it with `FakePasswordResetService` (`factory.PasswordResetService`). The backend for frontend proxies only `POST /api/password-reset` anonymously. Keycloak sends its emails to the Mailpit container; read them in Mailpit's web UI.
 
+Third-party sign-in (ADR 009): Keycloak brokers the Google, GitHub and Microsoft identity providers declared in the realm. Each is enabled only when the AppHost has `Parameters:<alias>-client-id`/`-client-secret` (user secrets); `AppHost/ExternalIdentityProviders.cs` passes them to Keycloak as `KC_IDP_*` environment variables, which the realm file's placeholders read. The SPA gets the enabled providers from `/backend-for-frontend/providers` and calls `/backend-for-frontend/login?provider=<alias>`; only enabled aliases are accepted, and they are forwarded as `kc_idp_hint`. `tests/AppTemplate.BackendForFrontend.Tests` covers the backend for frontend. Outside Development, `Keycloak:Authority` must be set to the realm's public HTTPS URL.
+
+Authorization (ADR 010): the API's permissions are Keycloak client roles on `apptemplate-api` (`users:read`, `users:write`, `users:delete`), defined in `UseCases/Authorization/Permission.cs` and bundled into realm roles such as `admin`. `Web/Authorization/KeycloakPermissionsClaimsTransformation` maps `resource_access.apptemplate-api.roles` to `permission` claims. Each permission is also an ASP.NET Core policy of the same name, so endpoints use `Policies(Permission.X)` for coarse checks. Resource-based rules, such as "may update own profile, or anyone's with users:write", live in use cases via `ICurrentUser` and return `Result.Forbidden()`, which maps to 403. `GET /users/me` returns the caller's permissions for the UI (`CurrentUserService`, `permissionGuard`), but the API always enforces them itself. In functional tests, grant permissions with `factory.CreateAuthenticatedClient(sub, Permission.UsersRead, ...)`; the test handler emits a real `resource_access` claim. The dev realm has an `admin`/`admin` account (temporary password) with the `admin` role.
+
+Caching (ADR 011):
+- **HybridCache** caches user reads inside use cases (`GetUserHandler`, `GetOrCreateCurrentUserHandler`). Entries are `CachedUser`, a primitives-only record so it serializes to Redis. L1 is memory and L2 is Redis (Aspire resource `cache`); without a `cache` connection string, both layers are in-memory.
+- **Output caching** stores whole responses: `GET /users` uses the `users-list` policy with `AuthorizedSharedResponsePolicy`, which caches authenticated responses that are the same for every authorized caller. `UseOutputCache` must stay after `UseAuthorization`. The backend for frontend caches `/providers`.
+- **Invalidation**: user entries and lists carry the tag `CacheTags.Users`, and every user write calls `ICacheInvalidator.InvalidateAsync(CacheTags.Users)`, which evicts both layers. A new cached read needs a tag and an invalidation call in each write that affects it.
+
+Background jobs (ADR 012) use Hangfire with Postgres storage (schema `hangfire`):
+- **Structure:** job classes in `Infrastructure/Jobs` are thin adapters that take primitive arguments, dispatch a Mediator command, and throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire. Jobs must be idempotent, because Hangfire runs them at least once.
+- **Current jobs:** `WelcomeEmailJob` (enqueued when `/users/me` provisions a user; the `emails` queue; guarded by `User.WelcomeEmailSentAtUtc`) and `SyncUserProfilesJob` (recurring hourly; copies names and emails from Keycloak).
+- **Dashboard:** `/jobs` on the Web API, Development only, local requests only.
+- **Tests:** functional tests use in-memory storage per host with `BackgroundJobs:RunServer=false`, a no-op Hangfire `ILogProvider` (Hangfire's logging is static global state), and `FakeEmailSender`. They run job classes directly.
+
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
 Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):
@@ -87,6 +102,7 @@ Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see
 
 The AppHost wires up these resources for local dev only (not a production deployment mechanism):
 - a containerized Postgres with a persistent data volume
+- Redis, used as HybridCache's L2 and the output-cache store
 - Keycloak on the fixed port 8080, with the realm imported
 - Mailpit, a development SMTP catcher for Keycloak's emails
 - the Web API
@@ -123,7 +139,7 @@ This project follows [Gitflow](https://www.atlassian.com/git/tutorials/comparing
 - `release/<version>`: branched from `develop` to stabilize a release. Merge it into `main` (tagged) and back into `develop`.
 - `hotfix/<short-name>`: branched from `main` for urgent production fixes. Merge it into `main` (tagged) and back into `develop`.
 
-Never commit on `main` or `develop` directly. Start a correctly-prefixed branch first. Until a `develop` branch exists on the remote, feature branches start from and target `main`.
+Never commit on `main` or `develop` directly. Start a correctly-prefixed branch first.
 
 ### Commits: Conventional Commits
 

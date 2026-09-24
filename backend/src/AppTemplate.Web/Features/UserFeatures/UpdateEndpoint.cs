@@ -29,15 +29,19 @@ public class UpdateEndpoint(IMediator _mediator)
 
         Summary(s =>
         {
-            s.Summary = "Update a new user";
-            s.Description = "Updates a new user with the specified name and unit price.";
+            s.Summary = "Update a user";
+            s.Description =
+                "Updates a user's name and phone number. Users may update their own profile; "
+                + "updating anyone else's requires the users:write permission.";
             s.ExampleRequest = new UpdateUserRequest { Id = 1, Name = "Sample User" };
             s.ResponseExamples[200] = new UpdateUserResponse(
                 new UserRecord(1, "Sample User", null)
             );
 
-            s.Responses[201] = "User created successfully";
+            s.Responses[200] = "User updated successfully";
             s.Responses[400] = "Invalid request data";
+            s.Responses[403] = "Not your profile, and no users:write permission";
+            s.Responses[404] = "User not found";
         });
 
         Tags("Users");
@@ -47,6 +51,7 @@ public class UpdateEndpoint(IMediator _mediator)
                 .Accepts<UpdateUserRequest>()
                 .Produces<UpdateUserResponse>(200, "application/json")
                 .ProducesProblem(400)
+                .ProducesProblem(403)
                 .ProducesProblem(404)
         );
     }

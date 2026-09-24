@@ -1,4 +1,5 @@
 ﻿using AppTemplate.Infrastructure.Email;
+using AppTemplate.UseCases.Users.SendWelcomeEmail;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -13,6 +14,9 @@ public static class OptionConfigurations
     {
         services
             .Configure<MailserverConfiguration>(configuration.GetSection("Mailserver"))
+            .Configure<WelcomeEmailOptions>(
+                configuration.GetSection(WelcomeEmailOptions.SectionName)
+            )
             // Configure Web Behavior
             .Configure<CookiePolicyOptions>(options =>
             {

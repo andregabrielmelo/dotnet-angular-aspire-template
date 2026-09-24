@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth-service';
 
@@ -16,6 +17,10 @@ export class AuthPage implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
+  protected readonly externalProviders = toSignal(this.authService.loadExternalProviders(), {
+    initialValue: [],
+  });
+
   ngOnInit(): void {
     this.authService.loadUser().subscribe((user) => {
       if (user) {
@@ -30,5 +35,9 @@ export class AuthPage implements OnInit {
 
   register(): void {
     this.authService.register();
+  }
+
+  loginWith(providerAlias: string): void {
+    this.authService.loginWith(providerAlias);
   }
 }

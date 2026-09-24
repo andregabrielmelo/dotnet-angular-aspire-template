@@ -1,5 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
+using AppTemplate.UseCases.Caching;
+using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
 using Ardalis.Result;
 using NSubstitute;
@@ -9,6 +11,8 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class GetOrCreateCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
+    private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
+    private readonly IBackgroundJobScheduler _jobs = Substitute.For<IBackgroundJobScheduler>();
 
     private static readonly GetOrCreateCurrentUserCommand Command = new(
         "keycloak-sub-1",
@@ -16,12 +20,14 @@ public class GetOrCreateCurrentUserHandlerTests
         new EmailAddress("ada@example.com")
     );
 
-    private GetOrCreateCurrentUserHandler CreateHandler() => new(_repository);
+    private GetOrCreateCurrentUserHandler CreateHandler() =>
+        new(_repository, TestCaches.Create(), _cacheInvalidator, _jobs);
 
     [Fact]
     public async Task Handle_WithExistingUser_ReturnsItWithoutCreating()
     {
         var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
+        existingUser.Id = UserId.From(1); // as if loaded from the database
         _repository
             .FirstOrDefaultAsync(
                 Arg.Any<UserByExternalIdSpecification>(),
@@ -80,5 +86,72 @@ public class GetOrCreateCurrentUserHandlerTests
 
         Assert.Equal(ResultStatus.Conflict, result.Status);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ExistingUser_IsServedFromTheCacheOnLaterCalls()
+    {
+        var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
+        existingUser.Id = UserId.From(1); // as if loaded from the database
+        _repository
+            .FirstOrDefaultAsync(
+                Arg.Any<UserByExternalIdSpecification>(),
+                Arg.Any<CancellationToken>()
+            )
+            .Returns(existingUser);
+        var handler = CreateHandler();
+
+        await handler.Handle(Command, CancellationToken.None);
+        var second = await handler.Handle(Command, CancellationToken.None);
+
+        Assert.True(second.IsSuccess);
+        Assert.Equal(Command.Email, second.Value.Email);
+        await _repository
+            .Received(1)
+            .FirstOrDefaultAsync(
+                Arg.Any<UserByExternalIdSpecification>(),
+                Arg.Any<CancellationToken>()
+            );
+    }
+
+    [Fact]
+    public async Task Handle_NewUser_InvalidatesCachedUserData()
+    {
+        _repository
+            .FirstOrDefaultAsync(
+                Arg.Any<UserByExternalIdSpecification>(),
+                Arg.Any<CancellationToken>()
+            )
+            .Returns((User?)null);
+        _repository
+            .AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<User>());
+
+        await CreateHandler().Handle(Command, CancellationToken.None);
+
+        await _cacheInvalidator
+            .Received(1)
+            .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
+        Assert.Single(
+            _jobs.ReceivedCalls(),
+            call => call.GetMethodInfo().Name == nameof(IBackgroundJobScheduler.EnqueueWelcomeEmail)
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ExistingUser_DoesNotEnqueueAnotherWelcomeEmail()
+    {
+        var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
+        existingUser.Id = UserId.From(1); // as if loaded from the database
+        _repository
+            .FirstOrDefaultAsync(
+                Arg.Any<UserByExternalIdSpecification>(),
+                Arg.Any<CancellationToken>()
+            )
+            .Returns(existingUser);
+
+        await CreateHandler().Handle(Command, CancellationToken.None);
+
+        Assert.Empty(_jobs.ReceivedCalls());
     }
 }

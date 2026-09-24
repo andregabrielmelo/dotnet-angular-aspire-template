@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,9 @@ public class TestAuthHandler(
     public const string SchemeName = "Test";
     public const string UserHeader = "X-Test-User";
 
+    /// <summary>Comma-separated API permissions, emitted like Keycloak's resource_access claim.</summary>
+    public const string PermissionsHeader = "X-Test-Permissions";
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (
@@ -30,12 +34,25 @@ public class TestAuthHandler(
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim("sub", subject!),
-            new Claim("name", $"Test {subject}"),
-            new Claim("email", $"{subject}@example.com"),
+            new("sub", subject!),
+            new("name", $"Test {subject}"),
+            new("email", $"{subject}@example.com"),
         };
+
+        var permissions = Request
+            .Headers[PermissionsHeader]
+            .ToString()
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (permissions.Length > 0)
+        {
+            var resourceAccess = JsonSerializer.Serialize(
+                new Dictionary<string, object> { ["apptemplate-api"] = new { roles = permissions } }
+            );
+            claims.Add(new Claim("resource_access", resourceAccess, "JSON"));
+        }
+
         var identity = new ClaimsIdentity(claims, SchemeName, "name", "roles");
 
         return Task.FromResult(

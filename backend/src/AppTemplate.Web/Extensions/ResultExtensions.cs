@@ -91,6 +91,11 @@ public static class ResultExtensions
         {
             ResultStatus.Ok => TypedResults.NoContent(),
             ResultStatus.NotFound => TypedResults.NotFound(),
+            ResultStatus.Forbidden => TypedResults.Problem(
+                title: "Forbidden",
+                detail: "You don't have permission to perform this operation.",
+                statusCode: StatusCodes.Status403Forbidden
+            ),
             _ => TypedResults.Problem(
                 title: "Delete failed",
                 detail: string.Join("; ", result.Errors),
@@ -111,6 +116,11 @@ public static class ResultExtensions
         {
             ResultStatus.Ok => TypedResults.Ok(mapResponse(result.Value)),
             ResultStatus.NotFound => TypedResults.NotFound(),
+            ResultStatus.Forbidden => TypedResults.Problem(
+                title: "Forbidden",
+                detail: "You don't have permission to perform this operation.",
+                statusCode: StatusCodes.Status403Forbidden
+            ),
             _ => TypedResults.Problem(
                 title: $"{operationName} failed",
                 detail: string.Join("; ", result.Errors),
