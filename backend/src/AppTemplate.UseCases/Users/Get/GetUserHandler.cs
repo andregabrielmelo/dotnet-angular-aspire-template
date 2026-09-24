@@ -1,12 +1,17 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
-using AppTemplate.Core.ValueObjects;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.Get;
 
 public record GetUserQuery(UserId UserId) : IQuery<Result<UserDto>>;
 
-public class GetUserHandler(IRepository<User> _repository)
+/// <summary>
+/// Cache-aside through HybridCache: concurrent misses for the same user share one database
+/// call (stampede protection), and "not found" is cached too, until the next user write
+/// invalidates <see cref="Caching.CacheTags.Users"/>.
+/// </summary>
+public class GetUserHandler(IRepository<User> _repository, HybridCache _cache)
     : IQueryHandler<GetUserQuery, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
@@ -14,11 +19,23 @@ public class GetUserHandler(IRepository<User> _repository)
         CancellationToken cancellationToken
     )
     {
-        var specification = new UserByIdSpecification(request.UserId);
-        var entity = await _repository.FirstOrDefaultAsync(specification, cancellationToken);
-        if (entity == null)
-            return Result.NotFound();
+        var cached = await _cache.GetOrCreateAsync(
+            CachedUser.KeyById(request.UserId),
+            (_repository, request.UserId),
+            static async (state, token) =>
+            {
+                var (repository, userId) = state;
+                var entity = await repository.FirstOrDefaultAsync(
+                    new UserByIdSpecification(userId),
+                    token
+                );
+                return entity is null ? null : CachedUser.FromEntity(entity);
+            },
+            CachedUser.EntryOptions,
+            CachedUser.Tags,
+            cancellationToken
+        );
 
-        return new UserDto(entity.Id, entity.Name, entity.PhoneNumber ?? PhoneNumber.Unknown);
+        return cached is null ? Result.NotFound() : cached.ToUserDto();
     }
 }

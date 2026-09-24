@@ -1,5 +1,6 @@
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Update;
 using Ardalis.Result;
@@ -11,6 +12,7 @@ public class UpdateUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
 
     private readonly User _target = User.Create(
         "owner-sub",
@@ -30,7 +32,7 @@ public class UpdateUserHandlerTests
     }
 
     private Task<Result<UserDto>> Handle() =>
-        new UpdateUserHandler(_repository, _currentUser)
+        new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
             .Handle(Command, CancellationToken.None)
             .AsTask();
 
@@ -44,6 +46,9 @@ public class UpdateUserHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Equal(Command.UserName, _target.Name);
         await _repository.Received(1).UpdateAsync(_target, Arg.Any<CancellationToken>());
+        await _cacheInvalidator
+            .Received(1)
+            .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -59,6 +64,9 @@ public class UpdateUserHandlerTests
         await _repository
             .DidNotReceive()
             .UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+        await _cacheInvalidator
+            .DidNotReceive()
+            .InvalidateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
