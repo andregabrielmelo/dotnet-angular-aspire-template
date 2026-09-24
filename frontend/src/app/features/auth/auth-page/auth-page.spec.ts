@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthPage } from './auth-page';
@@ -11,11 +11,9 @@ describe('AuthPage', () => {
     const navigateByUrl = vi.fn();
     TestBed.configureTestingModule({
       imports: [AuthPage],
-      providers: [
-        { provide: AuthService, useValue: authService },
-        { provide: Router, useValue: { navigateByUrl } },
-      ],
+      providers: [provideRouter([]), { provide: AuthService, useValue: authService }],
     });
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockImplementation(navigateByUrl);
     const fixture = TestBed.createComponent(AuthPage);
     fixture.detectChanges();
     return { fixture, authService, navigateByUrl };

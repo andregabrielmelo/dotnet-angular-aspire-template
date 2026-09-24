@@ -54,6 +54,14 @@ export class AuthService {
     );
   }
 
+  /**
+   * Asks Keycloak (through the API) to email a password reset link. The API answers the same
+   * way whether or not an account exists, so the caller can't learn which emails are registered.
+   */
+  requestPasswordReset(email: string): Observable<void> {
+    return this.http.post<void>('api/password-reset', { email });
+  }
+
   /** Ends both the local session and the Keycloak session, then returns to the app's root. */
   logout(): void {
     const logoutUrl = this.userSignal()?.logoutUrl;
