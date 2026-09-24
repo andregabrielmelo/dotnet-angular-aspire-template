@@ -26,6 +26,12 @@ public static class AuthenticationConfigurations
                     options.Audience = keycloak["Audience"] ?? "apptemplate-api";
                     // Keycloak runs over plain HTTP inside Aspire locally.
                     options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+                    // The Aspire service-discovery address is for local development. Elsewhere,
+                    // set Keycloak:Authority to the realm's public HTTPS URL (the tokens' issuer).
+                    if (keycloak["Authority"] is { Length: > 0 } authority)
+                    {
+                        options.Authority = authority;
+                    }
                     // Keep JWT claim names ("sub", "email", ...) instead of the legacy
                     // WS-Federation URIs ASP.NET Core maps them to by default.
                     options.MapInboundClaims = false;

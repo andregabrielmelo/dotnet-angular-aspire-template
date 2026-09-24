@@ -34,6 +34,7 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
         // KeycloakAdminOptions is validated on start; the real client is replaced below.
         builder.UseSetting("Keycloak:Admin:ClientSecret", "functional-tests");
+        builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
 
         builder.ConfigureServices(services =>
         {

@@ -69,6 +69,13 @@ public static class AuthenticationConfigurations
                     options.TokenValidationParameters.NameClaimType = "name";
                     // Keycloak runs over plain HTTP inside Aspire locally.
                     options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+                    // The Aspire service-discovery address ("https+http://keycloak/...") is for
+                    // local development. Elsewhere, set Keycloak:Authority to the realm's public
+                    // HTTPS URL, which is what issued tokens name as their issuer.
+                    if (keycloak["Authority"] is { Length: > 0 } authority)
+                    {
+                        options.Authority = authority;
+                    }
 
                     options.Scope.Clear();
                     options.Scope.Add("openid");
