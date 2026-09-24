@@ -6,6 +6,8 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Authentication: Keycloak (OpenID Connect) for register/login/logout, a new `AppTemplate.BackendForFrontend` host that keeps the session in a secure HTTP-only cookie and proxies `/api` with the user's access token, and JWT Bearer validation on the Web API. Domain users are provisioned just in time via `GET /users/me`. See ADR 007.
+
 - Clean Architecture .NET 10 backend (`Core` / `UseCases` / `Infrastructure` / `Web`), based on [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture), with a `User` feature as an end-to-end reference vertical slice.
 - Angular frontend (standalone components, `core`/`shared`/`features` structure), talking to the API via a dev-time proxy instead of CORS.
 - .NET Aspire `AppHost` orchestrating Postgres, the Web API, and the Angular frontend for local development.
@@ -25,6 +27,9 @@ All notable changes to **this template** are documented here (not changes to pro
 - A cross-platform line-ending mismatch (`.editorconfig` required CRLF while committed blobs were LF) that passed CI on Windows but failed csharpier's format check on Linux/macOS.
 
 ### Changed
+
+- `POST /users` was removed (users now register in Keycloak), every `/users` endpoint requires authentication, and `User` has an `ExternalId` (Keycloak `sub`) in place of a password.
+- The Angular dev server's `proxy.conf.ts` was removed; the backend for frontend is now the single browser origin.
 
 - Template license set to MIT (the source project it was based on used AGPL-3.0, which is unsuitable for a reusable starting point).
 

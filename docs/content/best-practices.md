@@ -16,7 +16,7 @@ Explicit guidelines for projects built from this template, so every project that
 - EF Core: avoid queries in loops (N+1) - eager-load or batch instead. Reach for compiled queries only once a specific query is a measured hot path, not by default.
 - Inject `ILogger<T>`, never call the static `Serilog.Log` directly. Use message templates (`"{UserId} created", id`), not string interpolation - it's what makes structured log fields searchable. Configuration belongs in `appsettings.json`'s `Serilog` section (already the case in `LoggerConfigurations.cs` via `ReadFrom.Configuration`), not hardcoded in C#.
 - Tests follow Arrange-Act-Assert, one behavior per test. See `AppTemplate.UnitTests` for the current shape.
-- **Known gap**: there's no authentication/authorization wired up yet - every backend endpoint is `AllowAnonymous()`, even though the frontend has login/register scaffolding. Don't treat that scaffolding as "auth is handled" - it isn't, yet.
+- Endpoints require an authenticated user (a Keycloak JWT) by default. Only add `AllowAnonymous()` deliberately. Read the caller's identity from JWT claim names (`sub`, `email`, `name`), since inbound claim mapping is off. Never put tokens in the browser: the Angular app relies on the backend for frontend's HTTP-only cookie (see [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}})).
 
 ## Angular
 

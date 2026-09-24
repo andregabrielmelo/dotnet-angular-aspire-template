@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A GitHub **template repository** for starting new full-stack projects: a Clean Architecture .NET backend, an Angular frontend, and .NET Aspire orchestrating both locally. It is not a sample app - the `User` feature is a deliberate end-to-end reference slice (Core → UseCases → Infrastructure → Web) to copy the shape of when adding a real feature, then delete once no longer needed as a reference.
 
-Every project, namespace, folder, the Postgres database name, and the frontend's session-storage key are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
+Every project, namespace, folder, the Postgres database name, and the Keycloak realm/client names are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
 
 Full documentation (architecture, design decisions, ADRs) lives in `docs/` (a Hugo site) and is authoritative for *why* things are built this way - read it before making architectural changes: `docs/content/design-decisions.md` and `docs/content/architecture-decisions/adr-*.md`.
 
@@ -41,7 +41,7 @@ A git pre-commit hook (Husky.Net, see `.husky/`) runs `dotnet csharpier format` 
 
 ```bash
 npm ci
-npm start                                          # ng serve, proxied to the API via proxy.conf.ts
+npm start                                          # ng serve - reached through the backend for frontend, not directly
 npm run build
 npm run test                                       # vitest, runs once (not watch mode)
 npm run lint                                       # eslint (@angular-eslint), CI-enforced
@@ -54,7 +54,7 @@ Not run day-to-day, but useful when editing docs: requires the `hugo-book` theme
 
 ## Architecture
 
-### Backend: Clean Architecture, five projects under `backend/src/`
+### Backend: Clean Architecture, five projects under `backend/src/` (plus AppHost, ServiceDefaults and BackendForFrontend)
 
 Dependencies point inward; nothing below depends on something above it in this list:
 
@@ -63,6 +63,12 @@ Dependencies point inward; nothing below depends on something above it in this l
 - **`AppTemplate.UseCases`** - CQRS commands/queries dispatched via `Mediator` (martinothamar/Mediator, source-generated - **not** MediatR). Depends on Core only; data access goes through `IRepository<T>` (`SharedKernel/IRepository.cs`, an `Ardalis.Specification` repository) and query-service interfaces defined here, implemented in Infrastructure.
 - **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`), email (MailKit), repository/query-service implementations. Anything talking to the outside world lives here.
 - **`AppTemplate.Web`** - the ASP.NET Core entry point and composition root (`Program.cs`, `Configurations/`). One [FastEndpoints](https://fast-endpoints.com/) class per endpoint under `Features/<Feature>Features/`, following the REPR pattern (Request-Endpoint-Response), with FluentValidation validators colocated in the same file as their endpoint.
+
+**`AppTemplate.BackendForFrontend`** sits outside the layers: it references only ServiceDefaults and is the browser's single origin. It runs the OpenID Connect flow against Keycloak, keeps the session in an HTTP-only `__Host-apptemplate` cookie, and proxies `/api/**` to Web with YARP, adding the user's access token as `Authorization: Bearer` (Duende.AccessTokenManagement refreshes it). Its session endpoints are `/backend-for-frontend/{login,register,user,logout}`. `/api/**` and `/backend-for-frontend/user` require the header `X-CSRF: 1`.
+
+### Authentication
+
+Keycloak is the OpenID Connect provider and owns credentials, registration and logout pages. The realm is `AppHost/Realms/apptemplate-realm.json`, imported on first start. Web accepts only Keycloak JWTs with audience `apptemplate-api` (`Configurations/AuthenticationConfigurations.cs`, `MapInboundClaims = false`, so read `sub`/`email`/`name`). FastEndpoints endpoints are authenticated unless marked `AllowAnonymous()`. Domain `User` rows are provisioned just in time by `GET /users/me`, linked through `User.ExternalId` (= `sub`). Functional tests authenticate with `TestAuthHandler` via the `X-Test-User` header (`factory.CreateAuthenticatedClient(sub)`). Keycloak's admin console is on `http://localhost:8080`; the admin password is the `keycloak-password` parameter in the Aspire dashboard. See ADR 007.
 
 Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):
 
@@ -75,11 +81,24 @@ Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see
 
 ### Aspire orchestration (`backend/src/AppTemplate.AppHost/AppHost.cs`)
 
-The AppHost wires up three resources for local dev only (not a production deployment mechanism): a containerized Postgres with a persistent data volume, the Web API, and the Angular frontend via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`). Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`.
+The AppHost wires up these resources for local dev only (not a production deployment mechanism):
+- a containerized Postgres with a persistent data volume
+- Keycloak on the fixed port 8080, with the realm imported
+- the Web API
+- the backend for frontend on the fixed port `https://localhost:7100`; the realm's redirect URIs depend on this port
+- the Angular frontend, via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`)
+
+Open the app at `https://localhost:7100`. Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`.
 
 ### Frontend (`frontend/src/app/`)
 
-Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (currently `auth`, `home`). Talks to the API through a dev-time proxy (`proxy.conf.ts`) instead of CORS.
+Standalone Angular components, organized as `core/`, `shared/`, and `features/<feature>/` (currently `auth`, `home`). It holds no tokens:
+- `AuthService` asks `/backend-for-frontend/user` whether a session exists.
+- Login, register and logout are full-page redirects (`BROWSER_REDIRECT`).
+- `core/auth/auth-interceptor.ts` adds `X-CSRF: 1`.
+- `authGuard` protects routes.
+
+Relative `api/...` URLs reach the Web API through the backend for frontend. There is no `proxy.conf.ts` and no CORS.
 
 ### CI (`.github/workflows/`)
 
