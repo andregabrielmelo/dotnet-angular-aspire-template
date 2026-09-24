@@ -49,7 +49,22 @@ var api = builder
     .WithReference(cache)
     .WaitFor(cache)
     .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
-    .WithHttpEndpoint(name: "api-http");
+    // Background jobs (welcome emails) send through Mailpit too.
+    .WithEnvironment(
+        "Mailserver__Hostname",
+        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Host)
+    )
+    .WithEnvironment(
+        "Mailserver__Port",
+        mailpit.GetEndpoint("smtp").Property(EndpointProperty.Port)
+    )
+    .WaitFor(mailpit)
+    .WithHttpEndpoint(name: "api-http")
+    // Hangfire dashboard (Development only, local requests only).
+    .WithUrlForEndpoint(
+        "http",
+        _ => new ResourceUrlAnnotation { Url = "/jobs", DisplayText = "Jobs dashboard" }
+    );
 
 // Angular dev server - only reached through the backend for frontend, never directly.
 var frontend = builder
