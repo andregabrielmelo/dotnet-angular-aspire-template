@@ -17,11 +17,22 @@ var backendForFrontendSecret = builder.AddParameter(
     secret: true
 );
 
+// Service account the Web API uses for Keycloak's Admin API (password reset emails).
+var userAdminSecret = builder.AddParameter("keycloak-user-admin-secret", secret: true);
+
+// Development SMTP catcher: Keycloak sends its emails (e.g. password reset links) here, and
+// they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint).
+var mailpit = builder
+    .AddContainer("mailpit", "axllent/mailpit", "v1.31.2")
+    .WithHttpEndpoint(targetPort: 8025, name: "http")
+    .WithEndpoint(targetPort: 1025, name: "smtp", scheme: "tcp");
+
 var keycloak = builder
     .AddKeycloak("keycloak", port: 8080)
     .WithDataVolume()
     .WithRealmImport("./Realms")
-    .WithLifetime(ContainerLifetime.Persistent);
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WaitFor(mailpit);
 
 // register the API project and link the DB
 var api = builder
@@ -31,6 +42,7 @@ var api = builder
     .WaitFor(applicationDatabase)
     .WithReference(keycloak)
     .WaitFor(keycloak)
+    .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
     .WithHttpEndpoint(name: "api-http");
 
 // Angular dev server - only reached through the backend for frontend, never directly.
