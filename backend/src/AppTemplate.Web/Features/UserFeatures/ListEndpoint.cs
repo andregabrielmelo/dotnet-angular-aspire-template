@@ -129,7 +129,7 @@ public sealed class ListUsersMapper
     public override UserListResponse FromEntity(UseCases.PagedResult<UserDto> e)
     {
         var items = e
-            .Items.Select(p => new UserRecord(p.Id.Value, p.Name.Value, p.PhoneNumber.ToString()))
+            .Items.Select(p => new UserRecord(p.Id.Value, p.Name.Value, p.PhoneNumber?.ToString()))
             .ToList();
 
         return new UserListResponse(items, e.Page, e.PerPage, e.TotalCount, e.TotalPages);
