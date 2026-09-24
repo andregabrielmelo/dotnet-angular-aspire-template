@@ -105,3 +105,36 @@ Relative `api/...` URLs reach the Web API through the backend for frontend. Ther
 `backend-build.yml` and `frontend-build.yml` both run format-check → (frontend also lints) → build/install → test on every push/PR touching their respective directory (backend across a Windows/Linux/macOS matrix). `codeql-analysis.yml` runs monthly, not per-push. `hugo-docs.yml` deploys `docs/` to GitHub Pages on pushes to `main`. See `.github/workflows/README.md` for details on each.
 
 Line endings are LF throughout (`backend/.gitattributes` pins `eol=lf`, `backend/.editorconfig` sets `end_of_line = lf`) - this was deliberately fixed from an original CRLF setup that passed on Windows runners but broke csharpier's format check on Linux/macOS.
+
+## Git workflow
+
+### Branching: Gitflow
+
+This project follows [Gitflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow):
+
+- `main`: released, production-ready history only. Never commit to it directly.
+- `develop`: the integration branch for the next release.
+- `feature/<short-kebab-name>` (e.g. `feature/password-reset`): new work. Branch it from `develop` and open its PR back into `develop`.
+- `release/<version>`: branched from `develop` to stabilize a release. Merge it into `main` (tagged) and back into `develop`.
+- `hotfix/<short-name>`: branched from `main` for urgent production fixes. Merge it into `main` (tagged) and back into `develop`.
+
+Never commit on `main` or `develop` directly. Start a correctly-prefixed branch first. Until a `develop` branch exists on the remote, feature branches start from and target `main`.
+
+### Commits: Conventional Commits
+
+Every commit message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```
+<type>[optional scope][!]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- Scopes are optional and name the area touched: `backend`, `frontend`, `auth`, `apphost`, `docs`, `ci`, and so on.
+- The description is imperative, lowercase, and has no trailing period.
+- Mark breaking changes with `!` after the type/scope and a `BREAKING CHANGE:` footer.
+- Prefer several small, focused commits, each of which builds, over one large commit.
+
