@@ -18,6 +18,9 @@ public static class MiddlewareConfigurations
 
         app.UseAuthentication();
         app.UseAuthorization();
+        // After authorization: a cached response is only served to callers who passed the
+        // endpoint's policies (see AuthorizedSharedResponsePolicy).
+        app.UseOutputCache();
 
         app.UseFastEndpoints();
 

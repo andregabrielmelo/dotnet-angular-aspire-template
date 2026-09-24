@@ -1,6 +1,7 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
+using AppTemplate.Web.Configurations;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -34,6 +35,8 @@ public class ListEndpoint(IMediator mediator)
     {
         Get("/users");
         Policies(Permission.UsersRead);
+        // The list is the same for everyone allowed to read it; user writes evict it.
+        Options(x => x.CacheOutput(CachingConfigurations.UsersListPolicy));
 
         Summary(s =>
         {
