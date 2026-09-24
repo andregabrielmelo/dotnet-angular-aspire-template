@@ -7,6 +7,7 @@ All notable changes to **this template** are documented here (not changes to pro
 ### Added
 
 - Authentication: Keycloak (OpenID Connect) for register/login/logout, a new `AppTemplate.BackendForFrontend` host that keeps the session in a secure HTTP-only cookie and proxies `/api` with the user's access token, and JWT Bearer validation on the Web API. Domain users are provisioned just in time via `GET /users/me`. See ADR 007.
+- Conventional Commits and Gitflow conventions for this repository (`CLAUDE.md`, `.github/CONTRIBUTING.md`).
 
 - Clean Architecture .NET 10 backend (`Core` / `UseCases` / `Infrastructure` / `Web`), based on [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture), with a `User` feature as an end-to-end reference vertical slice.
 - Angular frontend (standalone components, `core`/`shared`/`features` structure), talking to the API via a dev-time proxy instead of CORS.
