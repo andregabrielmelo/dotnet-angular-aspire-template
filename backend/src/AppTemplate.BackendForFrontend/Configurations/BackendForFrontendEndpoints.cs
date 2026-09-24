@@ -2,10 +2,14 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Options;
 
 namespace AppTemplate.BackendForFrontend.Configurations;
 
 public sealed record BackendForFrontendUser(string? Name, string? Email, string LogoutUrl);
+
+public sealed record ExternalIdentityProvider(string Alias, string DisplayName);
 
 /// <summary>
 /// Session endpoints the Angular app uses: it redirects the browser to login/register/logout
@@ -22,12 +26,54 @@ public static class BackendForFrontendEndpoints
     {
         var group = endpoints.MapGroup(BasePath);
 
+        // "provider" (optional) is the alias of a Keycloak-brokered identity provider, such as
+        // "google". Only enabled providers are accepted, so the hint can't be used to reach
+        // anything the realm doesn't intend to offer.
         group.MapGet(
             "/login",
-            (string? returnUrl) =>
-                TypedResults.Challenge(
-                    new AuthenticationProperties { RedirectUri = SafeReturnUrl(returnUrl) },
+            Results<ChallengeHttpResult, ProblemHttpResult> (
+                string? returnUrl,
+                string? provider,
+                IOptions<ExternalIdentityProvidersOptions> providers
+            ) =>
+            {
+                var properties = new AuthenticationProperties
+                {
+                    RedirectUri = SafeReturnUrl(returnUrl),
+                };
+
+                if (!string.IsNullOrEmpty(provider))
+                {
+                    if (!providers.Value.IsEnabled(provider))
+                    {
+                        return TypedResults.Problem(
+                            title: "Unknown sign-in provider",
+                            detail: $"'{provider}' is not an enabled sign-in provider.",
+                            statusCode: StatusCodes.Status400BadRequest
+                        );
+                    }
+
+                    properties.Items[AuthenticationConfigurations.IdentityProviderHintItem] =
+                        provider;
+                }
+
+                return TypedResults.Challenge(
+                    properties,
                     [OpenIdConnectDefaults.AuthenticationScheme]
+                );
+            }
+        );
+
+        // Public: which third-party sign-in buttons the SPA should show.
+        group.MapGet(
+            "/providers",
+            (IOptions<ExternalIdentityProvidersOptions> providers) =>
+                TypedResults.Ok(
+                    providers
+                        .Value.Providers.Where(p => p.Value.Enabled)
+                        .OrderBy(p => p.Value.DisplayName, StringComparer.Ordinal)
+                        .Select(p => new ExternalIdentityProvider(p.Key, p.Value.DisplayName))
+                        .ToArray()
                 )
         );
 

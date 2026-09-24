@@ -41,3 +41,6 @@ if (!app.Environment.IsDevelopment())
 app.MapDefaultEndpoints();
 
 app.Run();
+
+// Make the implicit Program class public so tests can host this app with WebApplicationFactory.
+public partial class Program { }
