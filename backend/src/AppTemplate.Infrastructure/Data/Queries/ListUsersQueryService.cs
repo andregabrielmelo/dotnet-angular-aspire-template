@@ -16,8 +16,10 @@ public class ListUsersQueryService : IListUsersQueryService
     public async Task<PagedResult<UserDto>> ListAsync(int page, int perPage)
     {
         var items = await _db
+            // EF Core materializes User from this SQL, so it must return every mapped column
+            // (snake_case names, see UseSnakeCaseNamingConvention) - not just the projected ones.
             .Users.FromSqlRaw(
-                "SELECT id, name, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
+                "SELECT id, external_id, name, email, phone_number_country_code, phone_number_number, phone_number_extension FROM users"
             )
             .OrderBy(c => c.Id)
             .Skip((page - 1) * perPage)
