@@ -6,6 +6,8 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Permission-based authorization. `users:read`, `users:write` and `users:delete` are Keycloak client roles, bundled into an `admin` realm role and enforced by per-permission policies. Users can always update their own profile; updating anyone else's requires `users:write`. `GET /users/me` returns the caller's permissions, and a users admin page is shown only to users who hold them. The dev realm includes an `admin` account. See ADR 010.
+
 - Third-party sign-in (Google, GitHub, Microsoft) brokered by Keycloak. Each provider is enabled only when its credentials are configured in the AppHost, and the sign-in page shows "Continue with …" buttons for enabled providers. See ADR 009.
 - `AppTemplate.BackendForFrontend.Tests`, the first automated tests for the backend for frontend.
 
@@ -26,6 +28,8 @@ All notable changes to **this template** are documented here (not changes to pro
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
 
 ### Fixed
+
+- Two nullable-reference warnings (CS8602) when mapping a user without a phone number in the list and get-by-id endpoints.
 
 - The backend for frontend and the Web API couldn't start the OpenID Connect flow outside Development, because the Aspire service-discovery authority isn't HTTPS. `Keycloak:Authority` now overrides it.
 
