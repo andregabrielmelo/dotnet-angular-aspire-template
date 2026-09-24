@@ -2,6 +2,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Caching;
+using AppTemplate.UseCases.Jobs;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.GetOrCreateCurrent;
@@ -19,7 +20,8 @@ public record GetOrCreateCurrentUserCommand(string ExternalId, UserName Name, Em
 public class GetOrCreateCurrentUserHandler(
     IRepository<User> _repository,
     HybridCache _cache,
-    ICacheInvalidator _cacheInvalidator
+    ICacheInvalidator _cacheInvalidator,
+    IBackgroundJobScheduler _jobs
 ) : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
 {
     public async ValueTask<Result<CurrentUserDto>> Handle(
@@ -68,6 +70,9 @@ public class GetOrCreateCurrentUserHandler(
 
         // Drops the cached "no such user" for this identity, and user lists that lack it.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
+
+        // Sending email is slow and can fail - never make the sign-in request wait on it.
+        _jobs.EnqueueWelcomeEmail(createdUser.Id);
 
         return ToDto(createdUser);
     }

@@ -1,6 +1,7 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Caching;
+using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
 using Ardalis.Result;
 using NSubstitute;
@@ -11,6 +12,7 @@ public class GetOrCreateCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
+    private readonly IBackgroundJobScheduler _jobs = Substitute.For<IBackgroundJobScheduler>();
 
     private static readonly GetOrCreateCurrentUserCommand Command = new(
         "keycloak-sub-1",
@@ -19,7 +21,7 @@ public class GetOrCreateCurrentUserHandlerTests
     );
 
     private GetOrCreateCurrentUserHandler CreateHandler() =>
-        new(_repository, TestCaches.Create(), _cacheInvalidator);
+        new(_repository, TestCaches.Create(), _cacheInvalidator, _jobs);
 
     [Fact]
     public async Task Handle_WithExistingUser_ReturnsItWithoutCreating()
@@ -130,5 +132,26 @@ public class GetOrCreateCurrentUserHandlerTests
         await _cacheInvalidator
             .Received(1)
             .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
+        Assert.Single(
+            _jobs.ReceivedCalls(),
+            call => call.GetMethodInfo().Name == nameof(IBackgroundJobScheduler.EnqueueWelcomeEmail)
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ExistingUser_DoesNotEnqueueAnotherWelcomeEmail()
+    {
+        var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
+        existingUser.Id = UserId.From(1); // as if loaded from the database
+        _repository
+            .FirstOrDefaultAsync(
+                Arg.Any<UserByExternalIdSpecification>(),
+                Arg.Any<CancellationToken>()
+            )
+            .Returns(existingUser);
+
+        await CreateHandler().Handle(Command, CancellationToken.None);
+
+        Assert.Empty(_jobs.ReceivedCalls());
     }
 }
