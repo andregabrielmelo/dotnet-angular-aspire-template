@@ -38,9 +38,7 @@ public static class AuthenticationConfigurations
                 }
             );
 
-        services.AddAuthorization();
-
-        logger.LogInformation("{Project} were configured", "Authentication and Authorization");
+        logger.LogInformation("{Project} were configured", "Authentication");
 
         return services;
     }

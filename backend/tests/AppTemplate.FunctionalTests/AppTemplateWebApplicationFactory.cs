@@ -73,11 +73,21 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
-    /// <summary>A client whose requests are authenticated as the given <c>sub</c>.</summary>
-    public HttpClient CreateAuthenticatedClient(string subject)
+    /// <summary>
+    /// A client whose requests are authenticated as the given <c>sub</c>, holding the given
+    /// API permissions (Keycloak client roles).
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient(string subject, params string[] permissions)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
+        if (permissions.Length > 0)
+        {
+            client.DefaultRequestHeaders.Add(
+                TestAuthHandler.PermissionsHeader,
+                string.Join(',', permissions)
+            );
+        }
         return client;
     }
 }

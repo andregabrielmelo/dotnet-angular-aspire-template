@@ -1,4 +1,5 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users.Delete;
 using AppTemplate.Web.Extensions;
 
@@ -15,6 +16,7 @@ public class DeleteEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Delete("/users/{UserId}");
+        Policies(Permission.UsersDelete);
 
         Summary(s =>
         {
@@ -23,6 +25,8 @@ public class DeleteEndpoint(IMediator _mediator)
             s.ExampleRequest = new DeleteUserRequest { UserId = 1 };
 
             s.Responses[400] = "Invalid request data";
+            s.Responses[403] = $"Requires the {Permission.UsersDelete} permission";
+            s.Responses[404] = "User not found";
         });
 
         Tags("Users");
@@ -32,6 +36,8 @@ public class DeleteEndpoint(IMediator _mediator)
                 .Accepts<DeleteUserRequest>()
                 .Produces(statusCode: 204, contentType: "application/json")
                 .ProducesProblem(400)
+                .ProducesProblem(403)
+                .ProducesProblem(404)
         );
     }
 

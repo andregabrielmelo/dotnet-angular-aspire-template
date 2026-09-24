@@ -1,4 +1,5 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Get;
 using AppTemplate.Web.Extensions;
@@ -20,6 +21,7 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
+        Policies(Permission.UsersRead);
 
         Summary(s =>
         {
@@ -29,6 +31,7 @@ public class GetByIdEndpoint(IMediator mediator)
             s.ResponseExamples[200] = new UserRecord(1, "Sample User", null);
 
             s.Responses[200] = "User obtained successfully";
+            s.Responses[403] = $"Requires the {Permission.UsersRead} permission";
             s.Responses[400] = "Invalid request data";
             s.Responses[404] = "User not found";
         });

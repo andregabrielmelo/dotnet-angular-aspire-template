@@ -1,16 +1,23 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
-public sealed record CurrentUserResponse(int Id, string Name, string Email);
+/// <param name="Permissions">What the caller may do - lets clients show or hide actions. The API still enforces every permission itself.</param>
+public sealed record CurrentUserResponse(
+    int Id,
+    string Name,
+    string Email,
+    IReadOnlyList<string> Permissions
+);
 
 /// <summary>
 /// Returns the caller's own profile, creating it on first use (just-in-time provisioning) -
 /// users register in Keycloak, so this is where the domain User row comes into existence.
 /// </summary>
-public class MeEndpoint(IMediator _mediator)
+public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
     : EndpointWithoutRequest<Results<Ok<CurrentUserResponse>, ProblemHttpResult>>
 {
     public override void Configure()
@@ -25,7 +32,8 @@ public class MeEndpoint(IMediator _mediator)
             s.ResponseExamples[200] = new CurrentUserResponse(
                 1,
                 "Sample User",
-                "sample@example.com"
+                "sample@example.com",
+                [Permission.UsersRead]
             );
 
             s.Responses[200] = "Current user returned successfully";
@@ -83,7 +91,8 @@ public class MeEndpoint(IMediator _mediator)
                 new CurrentUserResponse(
                     result.Value.Id.Value,
                     result.Value.Name.Value,
-                    result.Value.Email.Value
+                    result.Value.Email.Value,
+                    _currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
                 )
             ),
             ResultStatus.Conflict => TypedResults.Problem(

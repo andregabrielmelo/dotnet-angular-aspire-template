@@ -1,4 +1,5 @@
-﻿using AppTemplate.UseCases.Users;
+﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
 
 namespace AppTemplate.Web.Features.UserFeatures;
@@ -32,6 +33,7 @@ public class ListEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users");
+        Policies(Permission.UsersRead);
 
         Summary(s =>
         {
@@ -56,6 +58,7 @@ public class ListEndpoint(IMediator mediator)
                 $"Page size 1–{Constants.MAX_PAGE_SIZE} (default {Constants.DEFAULT_PAGE_SIZE})";
 
             s.Responses[200] = "Paginated list of users returned successfully";
+            s.Responses[403] = $"Requires the {Permission.UsersRead} permission";
             s.Responses[400] = "Invalid pagination parameters";
         });
 
