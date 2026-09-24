@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth-guard';
+import { permissionGuard } from './core/auth/permission-guard';
+import { Permission } from './core/auth/permissions';
 
 export const routes: Routes = [
   {
@@ -15,5 +17,10 @@ export const routes: Routes = [
     path: 'home',
     canActivate: [authGuard],
     loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
+  },
+  {
+    path: 'users',
+    canActivate: [authGuard, permissionGuard(Permission.UsersRead)],
+    loadComponent: () => import('./features/users/users-page').then((m) => m.UsersPage),
   },
 ];

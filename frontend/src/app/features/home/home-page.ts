@@ -1,32 +1,28 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth-service';
-
-interface CurrentUser {
-  id: number;
-  name: string;
-  email: string;
-}
+import { CurrentUserService } from '../../core/auth/current-user.service';
+import { Permission } from '../../core/auth/permissions';
 
 @Component({
   selector: 'app-home-page',
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './home-page.html',
 })
-export class HomePage {
+export class HomePage implements OnInit {
   private readonly authService = inject(AuthService);
-  private readonly http = inject(HttpClient);
+  private readonly currentUser = inject(CurrentUserService);
 
   protected readonly user = this.authService.user;
+  // From GET /api/users/me - a real API call through the backend for frontend (cookie in,
+  // Bearer token out) that also creates the user's profile on first sign-in.
+  protected readonly profile = this.currentUser.profile;
+  protected readonly canManageUsers = () => this.currentUser.hasPermission(Permission.UsersRead);
 
-  // A real API call through the backend for frontend (cookie in, Bearer token out). The first
-  // call also creates the user's profile in the application database.
-  protected readonly profile = toSignal(
-    this.http.get<CurrentUser>('api/users/me').pipe(catchError(() => of(null))),
-    { initialValue: null },
-  );
+  ngOnInit(): void {
+    this.currentUser.load().subscribe();
+  }
 
   logout(): void {
     this.authService.logout();
