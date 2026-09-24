@@ -70,6 +70,10 @@ Dependencies point inward; nothing below depends on something above it in this l
 
 Keycloak is the OpenID Connect provider and owns credentials, registration and logout pages. The realm is `AppHost/Realms/apptemplate-realm.json`, imported on first start. Web accepts only Keycloak JWTs with audience `apptemplate-api` (`Configurations/AuthenticationConfigurations.cs`, `MapInboundClaims = false`, so read `sub`/`email`/`name`). FastEndpoints endpoints are authenticated unless marked `AllowAnonymous()`. Domain `User` rows are provisioned just in time by `GET /users/me`, linked through `User.ExternalId` (= `sub`). Functional tests authenticate with `TestAuthHandler` via the `X-Test-User` header (`factory.CreateAuthenticatedClient(sub)`). Keycloak's admin console is on `http://localhost:8080`; the admin password is the `keycloak-password` parameter in the Aspire dashboard. See ADR 007.
 
+Password reset (ADR 008) is `POST /password-reset`: anonymous, throttled, and always 202. It goes through `IPasswordResetService` (UseCases). `Infrastructure/Identity/KeycloakPasswordResetService` implements it by calling Keycloak's Admin API `execute-actions-email` (`UPDATE_PASSWORD`) as the `apptemplate-user-admin` service account, using client credentials via Duende.AccessTokenManagement and settings from `KeycloakAdminOptions` (`Keycloak:Admin`). Functional tests replace it with `FakePasswordResetService` (`factory.PasswordResetService`). The backend for frontend proxies only `POST /api/password-reset` anonymously. Keycloak sends its emails to the Mailpit container; read them in Mailpit's web UI.
+
+The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
+
 Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):
 
 - **`AppTemplate.UnitTests`** - Core/UseCases in isolation, `IRepository<T>` substituted with NSubstitute. No I/O.
@@ -84,6 +88,7 @@ Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see
 The AppHost wires up these resources for local dev only (not a production deployment mechanism):
 - a containerized Postgres with a persistent data volume
 - Keycloak on the fixed port 8080, with the realm imported
+- Mailpit, a development SMTP catcher for Keycloak's emails
 - the Web API
 - the backend for frontend on the fixed port `https://localhost:7100`; the realm's redirect URIs depend on this port
 - the Angular frontend, via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`)

@@ -51,7 +51,7 @@ Angular, kept deliberately unopinionated beyond an `auth` and `home` feature sca
 
 # Authentication
 
-Keycloak (OpenID Connect) handles login, registration and logout. The backend for frontend turns the result into a secure, HTTP-only session cookie for the browser and calls the Web API with the user's access token as a JWT Bearer token. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}).
+Keycloak (OpenID Connect) handles login, registration and logout. The backend for frontend turns the result into a secure, HTTP-only session cookie for the browser and calls the Web API with the user's access token as a JWT Bearer token. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}). Password reset is also delegated to Keycloak, which emails the reset link; see [ADR 008]({{< relref "architecture-decisions/adr-008-password-reset-via-keycloak" >}}).
 
 # Orchestration
 

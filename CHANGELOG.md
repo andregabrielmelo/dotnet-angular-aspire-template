@@ -6,6 +6,8 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Password reset: a "Forgot your password?" page and an anonymous, throttled `POST /password-reset` that has Keycloak email a reset link through its Admin API, without revealing which emails have accounts. Mailpit catches the emails in development. See ADR 008.
+
 - Authentication: Keycloak (OpenID Connect) for register/login/logout, a new `AppTemplate.BackendForFrontend` host that keeps the session in a secure HTTP-only cookie and proxies `/api` with the user's access token, and JWT Bearer validation on the Web API. Domain users are provisioned just in time via `GET /users/me`. See ADR 007.
 - Conventional Commits and Gitflow conventions for this repository (`CLAUDE.md`, `.github/CONTRIBUTING.md`).
 
