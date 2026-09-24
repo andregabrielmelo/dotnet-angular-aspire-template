@@ -20,7 +20,6 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
-        AllowAnonymous();
 
         Summary(s =>
         {
