@@ -1,6 +1,9 @@
 <div class="mx-auto max-w-sm p-6">
-  <h1 class="mb-4 text-2xl font-semibold">Welcome{{ userName ? ', ' + userName : '' }}!</h1>
-  <p class="mb-6 text-sm text-gray-600">You're logged in.</p>
+  <h1 class="mb-4 text-2xl font-semibold">Welcome{{ user()?.name ? ', ' + user()?.name : '' }}!</h1>
+  <p class="mb-2 text-sm text-gray-600">You're logged in.</p>
+  @if (profile(); as profile) {
+    <p class="mb-6 text-sm text-gray-600">Profile #{{ profile.id }} · {{ profile.email }}</p>
+  }
 
   <button
     type="button"
