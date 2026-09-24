@@ -91,4 +91,16 @@ public class BackendForFrontendEndpointsTests(BackendForFrontendFactory factory)
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Providers_RepeatRequests_AreServedFromTheOutputCache()
+    {
+        await _client.GetAsync("/backend-for-frontend/providers");
+
+        var cached = await _client.GetAsync("/backend-for-frontend/providers");
+
+        // The output cache adds Age to responses it serves from its store.
+        Assert.Equal(HttpStatusCode.OK, cached.StatusCode);
+        Assert.NotNull(cached.Headers.Age);
+    }
 }

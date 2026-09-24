@@ -19,6 +19,7 @@ public static class BackendForFrontendEndpoints
 {
     public const string BasePath = "/backend-for-frontend";
     public const string UserPath = BasePath + "/user";
+    public const string ProvidersCachePolicy = "providers";
 
     public static IEndpointRouteBuilder MapBackendForFrontendEndpoints(
         this IEndpointRouteBuilder endpoints
@@ -65,17 +66,19 @@ public static class BackendForFrontendEndpoints
         );
 
         // Public: which third-party sign-in buttons the SPA should show.
-        group.MapGet(
-            "/providers",
-            (IOptions<ExternalIdentityProvidersOptions> providers) =>
-                TypedResults.Ok(
-                    providers
-                        .Value.Providers.Where(p => p.Value.Enabled)
-                        .OrderBy(p => p.Value.DisplayName, StringComparer.Ordinal)
-                        .Select(p => new ExternalIdentityProvider(p.Key, p.Value.DisplayName))
-                        .ToArray()
-                )
-        );
+        group
+            .MapGet(
+                "/providers",
+                (IOptions<ExternalIdentityProvidersOptions> providers) =>
+                    TypedResults.Ok(
+                        providers
+                            .Value.Providers.Where(p => p.Value.Enabled)
+                            .OrderBy(p => p.Value.DisplayName, StringComparer.Ordinal)
+                            .Select(p => new ExternalIdentityProvider(p.Key, p.Value.DisplayName))
+                            .ToArray()
+                    )
+            )
+            .CacheOutput(ProvidersCachePolicy);
 
         // Same flow as login, but "prompt=create" (OpenID Connect "Initiating User Registration")
         // makes Keycloak open its registration form instead of the sign-in form.

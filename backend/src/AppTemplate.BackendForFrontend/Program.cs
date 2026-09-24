@@ -8,6 +8,15 @@ builder.AddServiceDefaults();
 builder.Services.AddAuthenticationConfigurations(builder);
 builder.Services.AddReverseProxyConfigurations(builder);
 
+// Public, identical-for-everyone responses only (the default policy never caches requests
+// from signed-in users or responses that set cookies).
+builder.Services.AddOutputCache(options =>
+    options.AddPolicy(
+        BackendForFrontendEndpoints.ProvidersCachePolicy,
+        policy => policy.Expire(TimeSpan.FromMinutes(5))
+    )
+);
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -29,6 +38,7 @@ app.UseAntiforgeryHeaderCheck();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 
 app.MapBackendForFrontendEndpoints();
 app.MapReverseProxyWithAccessTokens();
