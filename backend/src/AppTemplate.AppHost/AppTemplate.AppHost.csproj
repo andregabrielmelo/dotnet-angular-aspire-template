@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
@@ -22,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AppTemplate.BackendForFrontend\AppTemplate.BackendForFrontend.csproj" />
     <ProjectReference Include="..\AppTemplate.Web\AppTemplate.Web.csproj" />
   </ItemGroup>
 </Project>
