@@ -6,6 +6,9 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Third-party sign-in (Google, GitHub, Microsoft) brokered by Keycloak. Each provider is enabled only when its credentials are configured in the AppHost, and the sign-in page shows "Continue with …" buttons for enabled providers. See ADR 009.
+- `AppTemplate.BackendForFrontend.Tests`, the first automated tests for the backend for frontend.
+
 - Password reset: a "Forgot your password?" page and an anonymous, throttled `POST /password-reset` that has Keycloak email a reset link through its Admin API, without revealing which emails have accounts. Mailpit catches the emails in development. See ADR 008.
 
 - Authentication: Keycloak (OpenID Connect) for register/login/logout, a new `AppTemplate.BackendForFrontend` host that keeps the session in a secure HTTP-only cookie and proxies `/api` with the user's access token, and JWT Bearer validation on the Web API. Domain users are provisioned just in time via `GET /users/me`. See ADR 007.
@@ -23,6 +26,8 @@ All notable changes to **this template** are documented here (not changes to pro
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
 
 ### Fixed
+
+- The backend for frontend and the Web API couldn't start the OpenID Connect flow outside Development, because the Aspire service-discovery authority isn't HTTPS. `Keycloak:Authority` now overrides it.
 
 - A stale Angular test asserting markup that no longer existed.
 - Dead `[Required]` Data Annotations on FastEndpoints request DTOs (FastEndpoints validates via FluentValidation, not Data Annotations - these had no effect).
