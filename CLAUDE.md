@@ -76,6 +76,11 @@ Third-party sign-in (ADR 009): Keycloak brokers the Google, GitHub and Microsoft
 
 Authorization (ADR 010): the API's permissions are Keycloak client roles on `apptemplate-api` (`users:read`, `users:write`, `users:delete`), defined in `UseCases/Authorization/Permission.cs` and bundled into realm roles such as `admin`. `Web/Authorization/KeycloakPermissionsClaimsTransformation` maps `resource_access.apptemplate-api.roles` to `permission` claims. Each permission is also an ASP.NET Core policy of the same name, so endpoints use `Policies(Permission.X)` for coarse checks. Resource-based rules, such as "may update own profile, or anyone's with users:write", live in use cases via `ICurrentUser` and return `Result.Forbidden()`, which maps to 403. `GET /users/me` returns the caller's permissions for the UI (`CurrentUserService`, `permissionGuard`), but the API always enforces them itself. In functional tests, grant permissions with `factory.CreateAuthenticatedClient(sub, Permission.UsersRead, ...)`; the test handler emits a real `resource_access` claim. The dev realm has an `admin`/`admin` account (temporary password) with the `admin` role.
 
+Caching (ADR 011):
+- **HybridCache** caches user reads inside use cases (`GetUserHandler`, `GetOrCreateCurrentUserHandler`). Entries are `CachedUser`, a primitives-only record so it serializes to Redis. L1 is memory and L2 is Redis (Aspire resource `cache`); without a `cache` connection string, both layers are in-memory.
+- **Output caching** stores whole responses: `GET /users` uses the `users-list` policy with `AuthorizedSharedResponsePolicy`, which caches authenticated responses that are the same for every authorized caller. `UseOutputCache` must stay after `UseAuthorization`. The backend for frontend caches `/providers`.
+- **Invalidation**: user entries and lists carry the tag `CacheTags.Users`, and every user write calls `ICacheInvalidator.InvalidateAsync(CacheTags.Users)`, which evicts both layers. A new cached read needs a tag and an invalidation call in each write that affects it.
+
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
 Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):
@@ -91,6 +96,7 @@ Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see
 
 The AppHost wires up these resources for local dev only (not a production deployment mechanism):
 - a containerized Postgres with a persistent data volume
+- Redis, used as HybridCache's L2 and the output-cache store
 - Keycloak on the fixed port 8080, with the realm imported
 - Mailpit, a development SMTP catcher for Keycloak's emails
 - the Web API
@@ -127,7 +133,7 @@ This project follows [Gitflow](https://www.atlassian.com/git/tutorials/comparing
 - `release/<version>`: branched from `develop` to stabilize a release. Merge it into `main` (tagged) and back into `develop`.
 - `hotfix/<short-name>`: branched from `main` for urgent production fixes. Merge it into `main` (tagged) and back into `develop`.
 
-Never commit on `main` or `develop` directly. Start a correctly-prefixed branch first. Until a `develop` branch exists on the remote, feature branches start from and target `main`.
+Never commit on `main` or `develop` directly. Start a correctly-prefixed branch first.
 
 ### Commits: Conventional Commits
 

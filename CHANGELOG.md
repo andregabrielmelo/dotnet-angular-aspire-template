@@ -6,6 +6,11 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Caching:
+  - HybridCache (in-memory L1 + Redis L2, with stampede protection) for user reads, including the `/users/me` lookup the SPA makes on every page load.
+  - Output caching for the user list (shared between authorized callers, gated by `users:read`) and the backend for frontend's `/providers`.
+  - User writes invalidate both layers by tag. Redis is added to the AppHost. See ADR 011.
+
 - Permission-based authorization. `users:read`, `users:write` and `users:delete` are Keycloak client roles, bundled into an `admin` realm role and enforced by per-permission policies. Users can always update their own profile; updating anyone else's requires `users:write`. `GET /users/me` returns the caller's permissions, and a users admin page is shown only to users who hold them. The dev realm includes an `admin` account. See ADR 010.
 
 - Third-party sign-in (Google, GitHub, Microsoft) brokered by Keycloak. Each provider is enabled only when its credentials are configured in the AppHost, and the sign-in page shows "Continue with …" buttons for enabled providers. See ADR 009.
@@ -28,6 +33,8 @@ All notable changes to **this template** are documented here (not changes to pro
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
 
 ### Fixed
+
+- The users list query's raw SQL didn't select every mapped column (`email`, `external_id`), which breaks entity materialization on Postgres.
 
 - Two nullable-reference warnings (CS8602) when mapping a user without a phone number in the list and get-by-id endpoints.
 
