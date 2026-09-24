@@ -1,8 +1,7 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.Interfaces;
+﻿using AppTemplate.Core.Interfaces;
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Email;
-using Microsoft.AspNetCore.Identity;
+using AppTemplate.Infrastructure.Identity;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -20,8 +19,7 @@ public static class ServiceConfigurations
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
 
-        // Stateless/thread-safe, so a singleton is fine (and avoids per-request allocation).
-        services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddKeycloakAdministration();
 
         logger.LogInformation(
             "{Project} services registered",

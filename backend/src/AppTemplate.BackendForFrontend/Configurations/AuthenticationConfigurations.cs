@@ -1,0 +1,89 @@
+﻿using Duende.AccessTokenManagement.OpenIdConnect;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+
+namespace AppTemplate.BackendForFrontend.Configurations;
+
+public static class AuthenticationConfigurations
+{
+    public const string CookieName = "__Host-apptemplate";
+
+    /// <summary>
+    /// OpenID Connect (authorization code + PKCE) against Keycloak for login, and an HTTP-only
+    /// cookie for the browser session. The tokens Keycloak issues are kept inside that encrypted
+    /// cookie ticket - never readable by JavaScript - and the access token is attached to proxied
+    /// API calls by <see cref="ReverseProxyConfigurations"/>.
+    /// </summary>
+    public static IServiceCollection AddAuthenticationConfigurations(
+        this IServiceCollection services,
+        WebApplicationBuilder builder
+    )
+    {
+        var keycloak = builder.Configuration.GetSection("Keycloak");
+
+        services
+            .AddAuthentication(options =>
+            {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+                options.DefaultSignOutScheme = OpenIdConnectDefaults.AuthenticationScheme;
+            })
+            .AddCookie(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                options =>
+                {
+                    options.Cookie.Name = CookieName;
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.Cookie.SameSite = SameSiteMode.Strict;
+                    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+                    options.SlidingExpiration = true;
+
+                    // The SPA talks to this host with fetch/XHR - answer with status codes
+                    // instead of redirecting API calls to a login page.
+                    options.Events.OnRedirectToLogin = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    };
+                    options.Events.OnRedirectToAccessDenied = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    };
+                }
+            )
+            .AddKeycloakOpenIdConnect(
+                serviceName: "keycloak",
+                realm: keycloak["Realm"] ?? "apptemplate",
+                options =>
+                {
+                    options.ClientId = keycloak["ClientId"] ?? "apptemplate-backend-for-frontend";
+                    options.ClientSecret = keycloak["ClientSecret"];
+                    options.ResponseType = OpenIdConnectResponseType.Code;
+                    options.UsePkce = true;
+                    options.SaveTokens = true;
+                    options.GetClaimsFromUserInfoEndpoint = true;
+                    options.MapInboundClaims = false;
+                    options.TokenValidationParameters.NameClaimType = "name";
+                    // Keycloak runs over plain HTTP inside Aspire locally.
+                    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+
+                    options.Scope.Clear();
+                    options.Scope.Add("openid");
+                    options.Scope.Add("profile");
+                    options.Scope.Add("email");
+                    // Refresh tokens, so the access token can be renewed without a new login.
+                    options.Scope.Add("offline_access");
+                }
+            );
+
+        // Refreshes the access token from the stored refresh token shortly before it expires.
+        services.AddOpenIdConnectAccessTokenManagement();
+
+        services.AddAuthorization();
+
+        return services;
+    }
+}

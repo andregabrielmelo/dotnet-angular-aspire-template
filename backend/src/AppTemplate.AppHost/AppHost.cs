@@ -9,22 +9,66 @@ var postgres = builder
 // Add the database
 var applicationDatabase = postgres.AddDatabase("apptemplate");
 
+// OpenID Connect provider: hosts the login, registration and logout pages. The realm (clients,
+// audience mapper, registration enabled) is imported from Realms/ on first start. The port is
+// pinned so the issuer URL the browser sees stays stable across runs.
+var backendForFrontendSecret = builder.AddParameter(
+    "keycloak-backend-for-frontend-secret",
+    secret: true
+);
+
+// Service account the Web API uses for Keycloak's Admin API (password reset emails).
+var userAdminSecret = builder.AddParameter("keycloak-user-admin-secret", secret: true);
+
+// Development SMTP catcher: Keycloak sends its emails (e.g. password reset links) here, and
+// they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint).
+var mailpit = builder
+    .AddContainer("mailpit", "axllent/mailpit", "v1.31.2")
+    .WithHttpEndpoint(targetPort: 8025, name: "http")
+    .WithEndpoint(targetPort: 1025, name: "smtp", scheme: "tcp");
+
+var keycloak = builder
+    .AddKeycloak("keycloak", port: 8080)
+    .WithDataVolume()
+    .WithRealmImport("./Realms")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WaitFor(mailpit);
+
 // register the API project and link the DB
 var api = builder
     .AddProject<Projects.AppTemplate_Web>("web")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithReference(applicationDatabase)
     .WaitFor(applicationDatabase)
+    .WithReference(keycloak)
+    .WaitFor(keycloak)
+    .WithEnvironment("Keycloak__Admin__ClientSecret", userAdminSecret)
     .WithHttpEndpoint(name: "api-http");
 
-// Add frontend service and reference the API
+// Angular dev server - only reached through the backend for frontend, never directly.
 var frontend = builder
     .AddJavaScriptApp("angular", "../../../frontend", runScriptName: "start")
     .WithNpm(installCommand: "ci")
+    .WithHttpEndpoint(env: "PORT")
+    .PublishAsDockerFile();
+
+// The browser's single entry point: owns the session cookie, runs the OIDC flow against
+// Keycloak, and proxies /api to the Web API (adding the access token) and everything else to
+// the Angular dev server. Its port is pinned because the realm's redirect URIs point at it.
+builder
+    .AddProject<Projects.AppTemplate_BackendForFrontend>(
+        "backend-for-frontend",
+        launchProfileName: null
+    )
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
+    .WithHttpsEndpoint(port: 7100, name: "https")
+    .WithEnvironment("Keycloak__ClientSecret", backendForFrontendSecret)
+    .WithReference(keycloak)
+    .WaitFor(keycloak)
     .WithReference(api)
     .WaitFor(api)
-    .WithHttpEndpoint(name: "frontend-http", env: "PORT")
-    .WithExternalHttpEndpoints()
-    .PublishAsDockerFile();
+    .WithReference(frontend.GetEndpoint("http"))
+    .WaitFor(frontend)
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();

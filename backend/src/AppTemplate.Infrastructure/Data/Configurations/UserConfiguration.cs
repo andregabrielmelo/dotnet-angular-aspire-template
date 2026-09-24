@@ -1,4 +1,4 @@
-using AppTemplate.Core.Aggregates.UserAggregate;
+﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
@@ -27,7 +27,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(entity => entity.Email).IsUnique();
 
-        builder.Property(entity => entity.Password).IsRequired();
+        builder
+            .Property(entity => entity.ExternalId)
+            .HasMaxLength(User.ExternalIdMaxLength)
+            .IsRequired();
+
+        builder.HasIndex(entity => entity.ExternalId).IsUnique();
 
         builder.OwnsOne(builder => builder.PhoneNumber);
     }

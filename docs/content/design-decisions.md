@@ -47,8 +47,12 @@ Small cross-cutting pieces shared by every layer above Core (base entity/aggrega
 
 # The Frontend
 
-Angular, kept deliberately unopinionated beyond an `auth` and `home` feature scaffold and a `core`/`shared` split. It talks to the API through a dev-time proxy (`proxy.conf.ts`) rather than CORS - see the [CORS & proxy notes]({{< relref "notes/cors-and-proxy" >}}).
+Angular, kept deliberately unopinionated beyond an `auth` and `home` feature scaffold and a `core`/`shared` split. It never holds tokens. It is served through `AppTemplate.BackendForFrontend`, which owns the session cookie and proxies `/api` to the Web API, so no CORS is needed. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}) and the [single-origin notes]({{< relref "notes/cors-and-proxy" >}}).
+
+# Authentication
+
+Keycloak (OpenID Connect) handles login, registration and logout. The backend for frontend turns the result into a secure, HTTP-only session cookie for the browser and calls the Web API with the user's access token as a JWT Bearer token. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}). Password reset is also delegated to Keycloak, which emails the reset link; see [ADR 008]({{< relref "architecture-decisions/adr-008-password-reset-via-keycloak" >}}).
 
 # Orchestration
 
-[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), the Web API, and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them (see `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option).
+[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), Keycloak (the OpenID Connect provider, with the `apptemplate` realm imported on first start), the Web API, the backend for frontend, and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them (see `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option).

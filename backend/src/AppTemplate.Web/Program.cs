@@ -14,6 +14,7 @@ startupLogger.LogInformation("Starting web host");
 
 builder.Services.AddOptionConfigurations(builder.Configuration, startupLogger, builder);
 builder.Services.AddServiceConfigurations(startupLogger, builder);
+builder.Services.AddAuthenticationConfigurations(startupLogger, builder);
 
 builder
     .Services.AddFastEndpoints()
