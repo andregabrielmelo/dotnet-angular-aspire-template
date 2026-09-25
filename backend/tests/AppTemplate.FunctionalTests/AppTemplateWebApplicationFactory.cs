@@ -104,6 +104,8 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
+    private static int _nextClientAddress;
+
     /// <summary>
     /// A client whose requests are authenticated as the given <c>sub</c>, holding the given
     /// API permissions (Keycloak client roles).
@@ -112,6 +114,10 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
+        // Throttled endpoints key on the client IP (as forwarded by the backend for
+        // frontend) - every client gets its own, so tests never share a rate-limit window.
+        var n = Interlocked.Increment(ref _nextClientAddress);
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.1.{n / 250}.{n % 250 + 1}");
         if (permissions.Length > 0)
         {
             client.DefaultRequestHeaders.Add(
