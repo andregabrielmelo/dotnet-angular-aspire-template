@@ -35,6 +35,9 @@ public interface IJobManagementService
     /// </summary>
     Task<Result> RemoveAsync(string jobId, CancellationToken cancellationToken);
 
-    /// <summary>Re-registers every job definition, keeping paused jobs paused.</summary>
+    /// <summary>
+    /// Syncs the scheduler with the job definitions in code: re-registers every definition
+    /// (keeping paused jobs paused) and removes recurring jobs whose definition no longer exists.
+    /// </summary>
     Task<Result> RestoreAsync(CancellationToken cancellationToken);
 }
