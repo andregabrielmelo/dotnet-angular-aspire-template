@@ -63,7 +63,7 @@ var api = builder
     // Hangfire dashboard (Development only, local requests only).
     .WithUrlForEndpoint(
         "http",
-        _ => new ResourceUrlAnnotation { Url = "/jobs", DisplayText = "Jobs dashboard" }
+        _ => new ResourceUrlAnnotation { Url = "/hangfire", DisplayText = "Jobs dashboard" }
     );
 
 // Angular dev server - only reached through the backend for frontend, never directly.

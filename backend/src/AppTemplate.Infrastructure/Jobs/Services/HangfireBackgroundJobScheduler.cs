@@ -1,8 +1,9 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Infrastructure.Jobs.FireAndForget;
 using AppTemplate.UseCases.Jobs;
 using Hangfire;
 
-namespace AppTemplate.Infrastructure.Jobs;
+namespace AppTemplate.Infrastructure.Jobs.Services;
 
 public sealed class HangfireBackgroundJobScheduler(IBackgroundJobClient client)
     : IBackgroundJobScheduler
@@ -12,6 +13,6 @@ public sealed class HangfireBackgroundJobScheduler(IBackgroundJobClient client)
     public string EnqueueWelcomeEmail(UserId userId) =>
         client.Enqueue<WelcomeEmailJob>(
             JobQueues.Emails,
-            job => job.RunAsync(userId.Value, CancellationToken.None)
+            job => job.ExecuteAsync(userId.Value, CancellationToken.None)
         );
 }

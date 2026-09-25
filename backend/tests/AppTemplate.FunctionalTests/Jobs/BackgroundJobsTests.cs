@@ -2,6 +2,8 @@ using System.Net.Http.Json;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs;
+using AppTemplate.Infrastructure.Jobs.FireAndForget;
+using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.Web.Features.UserFeatures;
 using Hangfire;
 using Hangfire.Storage;
@@ -27,22 +29,28 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
         using var scope = factory.Services.CreateScope();
         await scope
             .ServiceProvider.GetRequiredService<WelcomeEmailJob>()
-            .RunAsync(userId, CancellationToken.None);
+            .ExecuteAsync(userId, CancellationToken.None);
     }
 
-    [Fact]
-    public void Startup_RegistersTheRecurringProfileSync()
+    [Theory]
+    [InlineData(SyncUserProfilesJob.Id, "0 * * * *")]
+    [InlineData(TestRecurringJobDefinition.Id, "0 0 * * *")]
+    public void Startup_SchedulesEveryRecurringJobDefinitionThroughTheRunner(
+        string jobId,
+        string cron
+    )
     {
         using var connection = Storage.GetConnection();
 
-        var job = Assert.Single(
-            connection.GetRecurringJobs(),
-            j => j.Id == SyncUserProfilesJob.RecurringJobId
-        );
+        var job = Assert.Single(connection.GetRecurringJobs(), j => j.Id == jobId);
 
-        Assert.Equal("0 * * * *", job.Cron);
+        Assert.Equal(cron, job.Cron);
         Assert.Equal(JobQueues.Default, job.Queue);
-        Assert.Equal(nameof(SyncUserProfilesJob.RunAsync), job.Job.Method.Name);
+        Assert.Equal("UTC", job.TimeZoneId);
+        // Hangfire stores only the runner and the job id - never the definition itself.
+        Assert.Equal(typeof(RecurringJobRunner), job.Job.Type);
+        Assert.Equal(nameof(RecurringJobRunner.ExecuteAsync), job.Job.Method.Name);
+        Assert.Equal(jobId, job.Job.Args[0]);
     }
 
     [Fact]

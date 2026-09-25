@@ -1,5 +1,7 @@
-﻿using AppTemplate.Core.Interfaces;
+using AppTemplate.Core.Interfaces;
+using AppTemplate.FunctionalTests.Jobs;
 using AppTemplate.Infrastructure.Data;
+using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.UseCases.Users.ForgotPassword;
 using Hangfire;
 using Hangfire.InMemory;
@@ -28,6 +30,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
     public FakePasswordResetService PasswordResetService { get; } = new();
 
+    /// <summary>Counts runs of <see cref="TestRecurringJobDefinition"/>.</summary>
+    public TestRecurringJobProbe TestRecurringJob { get; } = new();
+
     /// <summary>Records emails instead of sending them over SMTP.</summary>
     public FakeEmailSender EmailSender { get; } = new();
 
@@ -44,7 +49,7 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
         // Jobs are enqueued into in-memory storage (below) but never executed in the
         // background - tests run job classes directly when they need to.
-        builder.UseSetting("BackgroundJobs:RunServer", "false");
+        builder.UseSetting("JobScheduling:RunServer", "false");
 
         builder.ConfigureServices(services =>
         {
@@ -81,6 +86,10 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
             // created lazily so it picks up the log provider above.
             services.RemoveAll<JobStorage>();
             services.AddSingleton<JobStorage>(_ => new InMemoryStorage());
+
+            // A recurring job the tests control, so they never have to run (or pause) real ones.
+            services.AddSingleton(TestRecurringJob);
+            services.AddRecurringJob<TestRecurringJobDefinition>();
 
             services
                 .AddAuthentication(options =>
