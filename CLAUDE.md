@@ -35,7 +35,7 @@ dotnet ef migrations add YourMigrationName \
 
 Migrations apply automatically on startup only in the `Development` environment (`DatabaseConfigurations.StartDatabase`, called from `Program.cs`); elsewhere they're a no-op unless `Database:ApplyMigrationsOnStartup` is set.
 
-A git pre-commit hook (Husky.Net, see `.husky/`) runs `dotnet csharpier format` on staged `.cs` files automatically. `Directory.Build.targets` at the repo root installs it the first time anyone runs `dotnet build`/`dotnet run`/`dotnet test` after cloning - no manual setup step. Set `HUSKY=0` to skip it (already set in CI, which never commits).
+There is no pre-commit hook: run `dotnet csharpier format .` before committing (CI runs `dotnet csharpier check .`). Format again after generating code, for example EF migrations.
 
 ### Frontend (Angular)
 
@@ -81,11 +81,20 @@ Caching (ADR 011):
 - **Output caching** stores whole responses: `GET /users` uses the `users-list` policy with `AuthorizedSharedResponsePolicy`, which caches authenticated responses that are the same for every authorized caller. `UseOutputCache` must stay after `UseAuthorization`. The backend for frontend caches `/providers`.
 - **Invalidation**: user entries and lists carry the tag `CacheTags.Users`, and every user write calls `ICacheInvalidator.InvalidateAsync(CacheTags.Users)`, which evicts both layers. A new cached read needs a tag and an invalidation call in each write that affects it.
 
-Background jobs (ADR 012) use Hangfire with Postgres storage (schema `hangfire`):
-- **Structure:** job classes in `Infrastructure/Jobs` are thin adapters that take primitive arguments, dispatch a Mediator command, and throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire. Jobs must be idempotent, because Hangfire runs them at least once.
-- **Current jobs:** `WelcomeEmailJob` (enqueued when `/users/me` provisions a user; the `emails` queue; guarded by `User.WelcomeEmailSentAtUtc`) and `SyncUserProfilesJob` (recurring hourly; copies names and emails from Keycloak).
-- **Dashboard:** `/jobs` on the Web API, Development only, local requests only.
-- **Tests:** functional tests use in-memory storage per host with `BackgroundJobs:RunServer=false`, a no-op Hangfire `ILogProvider` (Hangfire's logging is static global state), and `FakeEmailSender`. They run job classes directly.
+Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `hangfire`). Everything lives in `Infrastructure/Jobs/`:
+- **Recurring jobs** implement `IRecurringJobDefinition` (`JobId`, `CronExpression`, `ExecuteAsync(CancellationToken)`) in `Jobs/RecurringJobs/`, and are registered with `services.AddRecurringJob<T>()` in `Jobs/Extensions/ServiceCollectionExtensions.AddJobScheduling`. `UseJobSchedulingAsync()` (in `Program.cs`) schedules them all through `RecurringJobRunner`, the only type Hangfire stores for recurring jobs (argument: the job id). Job ids are contracts, so never rename a deployed one.
+- **Fire-and-forget jobs** (`Jobs/FireAndForget/`) are thin adapters: primitive arguments, a Mediator dispatch, and a throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire.
+- **Idempotency:** Hangfire runs every job at least once, so jobs must be safe to repeat. Nothing request-scoped (such as `ICurrentUser`) is available in jobs.
+- **Current jobs:**
+  - `WelcomeEmailJob`: enqueued when `/users/me` provisions a user; `emails` queue; guarded by `User.WelcomeEmailSentAtUtc`.
+  - `SyncUserProfilesJob`: hourly; copies names and emails from Keycloak.
+- **Management:** `IJobManagementService` backs the `/admin/jobs` endpoints (`jobs:read`, and `jobs:manage` for trigger, pause, resume, remove and restore) and the Angular `/jobs` pages. Pause state lives only in the `hangfire.paused_jobs` table, and a paused job is scheduled with `Cron.Never()`. Avoid static state; ADR 013 explains the deviations from netrock.
+- **Options:** `JobScheduling:Enabled` (false means no Hangfire and background work is skipped), `RunServer` and `WorkerCount`.
+- **Dashboard:** `/hangfire`, Development only, local requests only.
+- **Tests:**
+  - functional tests use in-memory storage per host with `JobScheduling:RunServer=false`, a no-op Hangfire `ILogProvider` (Hangfire's logging is static global state), and `FakeEmailSender`
+  - `TestRecurringJobDefinition` (`test-recurring-job`) is the job tests pause, trigger and remove, so they never touch real jobs
+  - `JobManagementServiceTests` starts a short-lived `BackgroundJobServer` for the trigger-to-history round trip
 
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
