@@ -81,16 +81,32 @@ public sealed partial class JobManagementService(
         // Remember the definition's schedule when there is one - the stored cron may already be
         // Never (e.g. paused by an older instance whose row was removed by hand).
         var originalCron = FindDefinition(jobId)?.CronExpression ?? job.Cron;
-        dbContext.PausedJobs.Add(
-            new PausedJob
+        var pausedJob = new PausedJob
+        {
+            Id = Guid.NewGuid(),
+            JobId = jobId,
+            OriginalCron = originalCron,
+            PausedAtUtc = timeProvider.GetUtcNow(),
+        };
+        dbContext.PausedJobs.Add(pausedJob);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another request paused the same job between our check and our insert (the unique
+            // index on job_id rejected ours). It also scheduled Cron.Never(), so we're done.
+            // Anything else is a real database error and propagates.
+            dbContext.Entry(pausedJob).State = EntityState.Detached;
+            if (!await dbContext.PausedJobs.AnyAsync(p => p.JobId == jobId, cancellationToken))
             {
-                Id = Guid.NewGuid(),
-                JobId = jobId,
-                OriginalCron = originalCron,
-                PausedAtUtc = timeProvider.GetUtcNow(),
+                throw;
             }
-        );
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+            LogLostRace(logger, "pause", jobId);
+            return Result.Success();
+        }
 
         registrar.Schedule(jobId, Cron.Never());
         LogPaused(logger, jobId, originalCron);
@@ -114,7 +130,7 @@ public sealed partial class JobManagementService(
         }
 
         dbContext.PausedJobs.Remove(pausedJob);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveDeletionAsync(pausedJob, "resume", jobId, cancellationToken);
 
         // The definition wins, so a schedule changed in code since the pause takes effect.
         var cron = FindDefinition(jobId)?.CronExpression ?? pausedJob.OriginalCron;
@@ -139,7 +155,7 @@ public sealed partial class JobManagementService(
         if (pausedJob is not null)
         {
             dbContext.PausedJobs.Remove(pausedJob);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await SaveDeletionAsync(pausedJob, "remove", jobId, cancellationToken);
         }
 
         LogRemoved(logger, jobId);
@@ -150,6 +166,28 @@ public sealed partial class JobManagementService(
     {
         await registrar.RegisterAllAsync(cancellationToken);
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Saves the deletion of a <see cref="PausedJob"/> row. If a concurrent request already
+    /// deleted it, the outcome is the same, so that isn't an error.
+    /// </summary>
+    private async Task SaveDeletionAsync(
+        PausedJob pausedJob,
+        string operation,
+        string jobId,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            dbContext.Entry(pausedJob).State = EntityState.Detached;
+            LogLostRace(logger, operation, jobId);
+        }
     }
 
     private IRecurringJobDefinition? FindDefinition(string jobId) =>
@@ -250,6 +288,12 @@ public sealed partial class JobManagementService(
         Message = "Resumed recurring job '{JobId}' ({Cron})"
     )]
     private static partial void LogResumed(ILogger logger, string jobId, string cron);
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Concurrent {Operation} of recurring job '{JobId}' already applied; treating as success"
+    )]
+    private static partial void LogLostRace(ILogger logger, string operation, string jobId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Removed recurring job '{JobId}'")]
     private static partial void LogRemoved(ILogger logger, string jobId);
