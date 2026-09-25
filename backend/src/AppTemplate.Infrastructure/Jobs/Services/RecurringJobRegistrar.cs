@@ -1,18 +1,22 @@
-﻿using Hangfire;
+﻿using AppTemplate.Infrastructure.Data;
+using Hangfire;
 
 namespace AppTemplate.Infrastructure.Jobs.Services;
 
 /// <summary>
 /// Creates or updates the Hangfire schedule of every <see cref="IRecurringJobDefinition"/>.
-/// Idempotent (keyed by the stable job id), so it runs on every startup of every instance.
+/// Idempotent (keyed by the stable job id), so it runs on every startup of every instance, and
+/// re-adds jobs someone deleted from the dashboard. Paused jobs (a row in <c>paused_jobs</c>)
+/// are scheduled with <see cref="Cron.Never"/>, so a pause survives restarts.
 /// </summary>
 public sealed partial class RecurringJobRegistrar(
     IEnumerable<IRecurringJobDefinition> definitions,
     IRecurringJobManager jobManager,
+    ApplicationDatabaseContext dbContext,
     ILogger<RecurringJobRegistrar> logger
 )
 {
-    public Task<int> RegisterAllAsync(CancellationToken cancellationToken)
+    public async Task<int> RegisterAllAsync(CancellationToken cancellationToken)
     {
         var all = definitions.ToList();
 
@@ -29,14 +33,21 @@ public sealed partial class RecurringJobRegistrar(
             LogNoJobs(logger);
         }
 
+        var pausedJobIds = (
+            await dbContext
+                .PausedJobs.AsNoTracking()
+                .Select(p => p.JobId)
+                .ToListAsync(cancellationToken)
+        ).ToHashSet(StringComparer.Ordinal);
+
         foreach (var definition in all)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            Schedule(definition.JobId, definition.CronExpression);
-            LogRegistered(logger, definition.JobId, definition.CronExpression);
+            var isPaused = pausedJobIds.Contains(definition.JobId);
+            Schedule(definition.JobId, isPaused ? Cron.Never() : definition.CronExpression);
+            LogRegistered(logger, definition.JobId, definition.CronExpression, isPaused);
         }
 
-        return Task.FromResult(all.Count);
+        return all.Count;
     }
 
     /// <summary>Points the job at <see cref="RecurringJobRunner"/> - only the id is stored.</summary>
@@ -54,7 +65,12 @@ public sealed partial class RecurringJobRegistrar(
 
     [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Registered recurring job '{JobId}' ({Cron})"
+        Message = "Registered recurring job '{JobId}' ({Cron}), paused: {IsPaused}"
     )]
-    private static partial void LogRegistered(ILogger logger, string jobId, string cron);
+    private static partial void LogRegistered(
+        ILogger logger,
+        string jobId,
+        string cron,
+        bool isPaused
+    );
 }
