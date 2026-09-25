@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         if (!options.Enabled)
         {
             services.AddScoped<IBackgroundJobScheduler, DisabledBackgroundJobScheduler>();
+            services.AddScoped<IJobManagementService, DisabledJobManagementService>();
             return services;
         }
 
@@ -98,6 +99,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RecurringJobRunner>();
         services.AddScoped<RecurringJobRegistrar>();
         services.AddScoped<IBackgroundJobScheduler, HangfireBackgroundJobScheduler>();
+        services.AddScoped<IJobManagementService, JobManagementService>();
 
         return services;
     }
