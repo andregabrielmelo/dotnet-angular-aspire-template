@@ -67,4 +67,32 @@ describe('JobDetailPage', () => {
 
     expect(element.textContent).toContain('That job no longer exists');
   });
+
+  it('loads the new job when the route switches to another job id', async () => {
+    const { fixture, httpMock, element } = setup();
+    const first = httpMock.expectOne('api/admin/jobs/sync-user-profiles');
+
+    fixture.componentRef.setInput('jobId', 'test-recurring-job');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The previous job's request is cancelled, so its late response can't win.
+    expect(first.cancelled).toBe(true);
+    httpMock.expectOne('api/admin/jobs/test-recurring-job').flush({
+      job: {
+        id: 'test-recurring-job',
+        cron: '0 0 * * *',
+        nextExecution: null,
+        lastExecution: null,
+        lastStatus: null,
+        isPaused: false,
+        createdAt: null,
+      },
+      recentExecutions: [],
+    });
+    fixture.detectChanges();
+
+    expect(element.textContent).toContain('0 0 * * *');
+    expect(element.textContent).toContain('No runs yet.');
+  });
 });
