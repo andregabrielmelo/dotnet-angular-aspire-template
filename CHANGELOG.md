@@ -6,6 +6,13 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Job management, structured after netrock's Jobs feature:
+  - Recurring jobs are `IRecurringJobDefinition`s, scheduled at startup and run through a DI-activated `RecurringJobRunner`.
+  - Admins can list, trigger, pause/resume (persisted, and survives restarts), remove and restore jobs through `/admin/jobs` (`jobs:read`, `jobs:manage`) and the new Angular `/jobs` pages.
+  - Startup and Restore keep the scheduler in sync with the code: recurring jobs whose definition was renamed or deleted are removed.
+  - Concurrent pause, resume or remove requests on the same job all succeed instead of returning 500.
+  - See ADR 013.
+
 - Background jobs with Hangfire, stored in the application's Postgres. A welcome email goes out after sign-up: idempotent, retried, and sent through Mailpit in development. An hourly job syncs user names and emails from Keycloak. The jobs dashboard is available in Development. See ADR 012.
 
 - Caching:
@@ -51,6 +58,10 @@ All notable changes to **this template** are documented here (not changes to pro
 - A cross-platform line-ending mismatch (`.editorconfig` required CRLF while committed blobs were LF) that passed CI on Windows but failed csharpier's format check on Linux/macOS.
 
 ### Changed
+
+- The `BackgroundJobs` configuration section is now `JobScheduling` (`Enabled`, `RunServer`, `WorkerCount`), and the Hangfire dashboard moved from `/jobs` to `/hangfire`.
+- `Newtonsoft.Json` is pinned to 13.0.4 (Hangfire.Core only requires 11.0.1, which has advisory GHSA-5crp-9r3c-p9vr).
+- A root `.gitattributes` enforces LF line endings repository-wide.
 
 - `POST /users` was removed (users now register in Keycloak), every `/users` endpoint requires authentication, and `User` has an `ExternalId` (Keycloak `sub`) in place of a password.
 - The Angular dev server's `proxy.conf.ts` was removed; the backend for frontend is now the single browser origin.

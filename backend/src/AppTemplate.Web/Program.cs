@@ -1,4 +1,4 @@
-﻿using AppTemplate.Infrastructure.Jobs;
+﻿using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.ServiceDefaults;
 using AppTemplate.Web.Configurations;
 
@@ -40,8 +40,7 @@ if (app.Environment.IsDevelopment())
     await app.StartDatabase();
 }
 
-app.Services.RegisterRecurringJobs();
-app.MapBackgroundJobsDashboard();
+await app.UseJobSchedulingAsync();
 
 app.MapDefaultEndpoints(); // Aspire health checks and metrics
 
