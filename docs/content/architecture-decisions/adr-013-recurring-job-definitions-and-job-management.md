@@ -17,7 +17,7 @@ ADR 012 introduced Hangfire with two hand-registered jobs. Adding a recurring jo
 - **`IRecurringJobDefinition`** (`JobId`, `CronExpression`, `ExecuteAsync`). Definitions are registered with `AddRecurringJob<T>()` in `AddJobScheduling` and scheduled at startup by `UseJobSchedulingAsync()`, which also maps the Development dashboard at Hangfire's default `/hangfire`. Recurring jobs live in `RecurringJobs/`, fire-and-forget jobs in `FireAndForget/`, and the rest in `Options/`, `Models/`, `Configurations/`, `Services/` and `Extensions/`.
 - **One entry point for every recurring job.** Hangfire stores only the job id, and the runner resolves the definition in a fresh DI scope.
 - **Pause and resume.** Hangfire has no native pause, so a paused job stays registered with `Cron.Never()` and a `hangfire.paused_jobs` row keeps its schedule.
-- **`IJobManagementService`** (UseCases): list, detail with recent runs, trigger, pause, resume, remove, and restore (re-register every definition, keeping paused jobs paused). It is exposed as `/admin/jobs` endpoints:
+- **`IJobManagementService`** (UseCases): list, detail with recent runs, trigger, pause, resume, remove, and restore. Restore is a **sync with code**: it re-registers every definition (keeping paused jobs paused) and removes recurring jobs whose definition no longer exists, which startup does too. It is exposed as `/admin/jobs` endpoints:
   - reading needs `jobs:read`; changing needs `jobs:manage`
   - changes are rate limited per client IP
   - the Angular pages are `/jobs` and `/jobs/:jobId`
@@ -32,6 +32,8 @@ ADR 012 introduced Hangfire with two hand-registered jobs. Adding a recurring jo
 | `ExecuteAsync()` with no parameters, and `GetAwaiter().GetResult()` at startup | `ExecuteAsync(CancellationToken)`, and async `UseJobSchedulingAsync` | The Hangfire docs recommend `CancellationToken` parameters (signalled on shutdown). Sync-over-async blocks startup threads. |
 | Execution history filtered by job type | Filtered by the job id argument | All recurring jobs share one runner type, so filtering by type would mix their histories. |
 | Resume restores the stored cron | Resume restores the definition's current cron (the stored one only if the definition is gone) | A schedule changed in code while a job was paused takes effect. |
+| Recurring jobs whose definition was renamed or deleted stay registered forever, firing and doing nothing | Registration (startup and Restore) removes `RecurringJobRunner` jobs that have no definition, along with their pause state. Jobs registered with Hangfire any other way, or whose stored invocation can't load, are left alone | The scheduler always matches the definitions in code. |
+| Pause checks for a row, then inserts it; the same pattern for deletes | Losing that race to a concurrent request counts as success; other database errors still propagate | Two admins acting at once shouldn't get a 500 for an operation that did happen. |
 | Dashboard `Authorization = []` in Development | `LocalRequestsOnlyAuthorizationFilter` | Hangfire's own default. Anyone who can reach the port shouldn't be able to delete jobs. |
 
 **From the Hangfire docs:**
@@ -50,3 +52,5 @@ ADR 012 introduced Hangfire with two hand-registered jobs. Adding a recurring jo
 - Pause state and the schedule survive restarts. Startup re-registers every definition (restoring any deleted from the dashboard), with paused ones on `Cron.Never()`.
 - `paused_jobs` is created by an EF migration in Hangfire's schema. Migrations must be applied before the API starts, because startup reads that table.
 - `Hangfire.Core`'s minimum `Newtonsoft.Json` (11.0.1) has a known vulnerability (GHSA-5crp-9r3c-p9vr), so 13.0.4 is pinned explicitly.
+- **Rolling deployments:** registration runs on every startup, so the first instance of a new version removes jobs its code no longer defines. That happens even while instances of the old version are still running and could execute them, which is harmless for jobs that were deliberately deleted.
+- Pause, resume and remove are idempotent under concurrency. The unique index on `paused_jobs.job_id` is what makes a concurrent pause safe.

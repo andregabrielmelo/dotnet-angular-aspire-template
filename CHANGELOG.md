@@ -9,6 +9,8 @@ All notable changes to **this template** are documented here (not changes to pro
 - Job management, structured after netrock's Jobs feature:
   - Recurring jobs are `IRecurringJobDefinition`s, scheduled at startup and run through a DI-activated `RecurringJobRunner`.
   - Admins can list, trigger, pause/resume (persisted, and survives restarts), remove and restore jobs through `/admin/jobs` (`jobs:read`, `jobs:manage`) and the new Angular `/jobs` pages.
+  - Startup and Restore keep the scheduler in sync with the code: recurring jobs whose definition was renamed or deleted are removed.
+  - Concurrent pause, resume or remove requests on the same job all succeed instead of returning 500.
   - See ADR 013.
 
 - Background jobs with Hangfire, stored in the application's Postgres. A welcome email goes out after sign-up: idempotent, retried, and sent through Mailpit in development. An hourly job syncs user names and emails from Keycloak. The jobs dashboard is available in Development. See ADR 012.
