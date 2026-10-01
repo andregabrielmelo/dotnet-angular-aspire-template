@@ -142,7 +142,11 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
 
         public int Calls => Volatile.Read(ref _calls);
 
-        public Task<PagedResult<UserDto>> ListAsync(int page, int perPage)
+        public Task<PagedResult<UserDto>> ListAsync(
+            int page,
+            int perPage,
+            CancellationToken cancellationToken
+        )
         {
             Interlocked.Increment(ref _calls);
             return Task.FromResult(new PagedResult<UserDto>([], page, perPage, 0, 0));

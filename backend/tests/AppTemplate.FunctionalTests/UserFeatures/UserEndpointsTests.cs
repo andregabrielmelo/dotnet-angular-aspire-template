@@ -105,8 +105,11 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
     private sealed class EmptyListUsersQueryService : IListUsersQueryService
     {
-        public Task<PagedResult<UserDto>> ListAsync(int page, int perPage) =>
-            Task.FromResult(new PagedResult<UserDto>([], page, perPage, 0, 0));
+        public Task<PagedResult<UserDto>> ListAsync(
+            int page,
+            int perPage,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(new PagedResult<UserDto>([], page, perPage, 0, 0));
     }
 
     [Fact]

@@ -13,7 +13,11 @@ public class ListUsersQueryService : IListUsersQueryService
         _db = db;
     }
 
-    public async Task<PagedResult<UserDto>> ListAsync(int page, int perPage)
+    public async Task<PagedResult<UserDto>> ListAsync(
+        int page,
+        int perPage,
+        CancellationToken cancellationToken
+    )
     {
         var items = await _db
             // EF Core materializes User from this SQL, so it must return every mapped column
@@ -26,9 +30,9 @@ public class ListUsersQueryService : IListUsersQueryService
             .Take(perPage)
             .Select(c => new UserDto(c.Id, c.Name, c.PhoneNumber ?? PhoneNumber.Unknown))
             .AsNoTracking()
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-        int totalCount = await _db.Users.CountAsync();
+        int totalCount = await _db.Users.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling(totalCount / (double)perPage);
         var result = new PagedResult<UserDto>(items, page, perPage, totalCount, totalPages);
 
