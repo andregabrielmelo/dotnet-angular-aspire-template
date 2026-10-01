@@ -5,7 +5,7 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Update;
 
-public record UpdateUserCommand(UserId UserId, UserName UserName, string? PhoneNumber)
+public record UpdateUserCommand(UserId UserId, UserName UserName, PhoneNumber? PhoneNumber)
     : Mediator.ICommand<Result<UserDto>>;
 
 /// <summary>
@@ -34,10 +34,9 @@ public class UpdateUserHandler(
             return Result<UserDto>.Forbidden();
 
         user.UpdateName(command.UserName);
-        if (!string.IsNullOrEmpty(command.PhoneNumber))
+        if (command.PhoneNumber is not null)
         {
-            var phoneNumber = new PhoneNumber("+1", command.PhoneNumber, String.Empty);
-            user.UpdatePhoneNumber(phoneNumber);
+            user.UpdatePhoneNumber(command.PhoneNumber);
         }
 
         await _repository.UpdateAsync(user, cancellationToken);

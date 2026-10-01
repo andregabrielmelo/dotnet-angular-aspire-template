@@ -70,6 +70,5 @@ public sealed class GetByIdUserValidator : Validator<GetUserByIdRequest>
 
 public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, UserDto>
 {
-    public override UserRecord FromEntity(UserDto e) =>
-        new(e.Id.Value, e.Name.Value, e.PhoneNumber?.ToString());
+    public override UserRecord FromEntity(UserDto e) => UserRecord.FromDto(e);
 }

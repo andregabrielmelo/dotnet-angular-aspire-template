@@ -81,6 +81,33 @@ public class UpdateUserHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithPhoneNumber_StoresAndReturnsIt()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+        var phoneNumber = new PhoneNumber("+55", "11 98765 4321", null);
+
+        var result = await new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
+            .Handle(Command with { PhoneNumber = phoneNumber }, CancellationToken.None)
+            .AsTask();
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(phoneNumber, _target.PhoneNumber);
+        Assert.Equal(phoneNumber, result.Value.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutPhoneNumber_KeepsTheCurrentOne()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+        var phoneNumber = new PhoneNumber("+55", "11 98765 4321", null);
+        _target.UpdatePhoneNumber(phoneNumber);
+
+        await Handle();
+
+        Assert.Equal(phoneNumber, _target.PhoneNumber);
+    }
+
+    [Fact]
     public async Task Handle_MissingUser_ReturnsNotFound()
     {
         _repository.GetByIdAsync(Command.UserId, Arg.Any<CancellationToken>()).Returns((User?)null);

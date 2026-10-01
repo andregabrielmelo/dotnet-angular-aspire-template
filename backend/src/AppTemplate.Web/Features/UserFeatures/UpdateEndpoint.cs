@@ -8,10 +8,18 @@ namespace AppTemplate.Web.Features.UserFeatures;
 
 public sealed class UpdateUserRequest
 {
+    /// <summary>Bound from the route - FastEndpoints lets route values override the body.</summary>
     public int Id { get; set; }
 
     public required string Name { get; set; }
+
+    /// <summary>Leave empty to keep the current phone number.</summary>
     public string? PhoneNumber { get; set; }
+
+    /// <summary>E.164 country calling code, e.g. "+55". Required with <see cref="PhoneNumber"/>.</summary>
+    public string? PhoneCountryCode { get; set; }
+
+    public string? PhoneExtension { get; set; }
 }
 
 public sealed record UpdateUserResponse(UserRecord User);
@@ -31,11 +39,18 @@ public class UpdateEndpoint(IMediator _mediator)
         {
             s.Summary = "Update a user";
             s.Description =
-                "Updates a user's name and phone number. Users may update their own profile; "
+                "Updates a user's name and, optionally, phone number (which needs a country code). "
+                + "Users may update their own profile; "
                 + "updating anyone else's requires the users:write permission.";
-            s.ExampleRequest = new UpdateUserRequest { Id = 1, Name = "Sample User" };
+            s.ExampleRequest = new UpdateUserRequest
+            {
+                Id = 1,
+                Name = "Sample User",
+                PhoneNumber = "555 0100",
+                PhoneCountryCode = "+1",
+            };
             s.ResponseExamples[200] = new UpdateUserResponse(
-                new UserRecord(1, "Sample User", null)
+                new UserRecord(1, "Sample User", "+1 555 0100")
             );
 
             s.Responses[200] = "User updated successfully";
@@ -60,10 +75,17 @@ public class UpdateEndpoint(IMediator _mediator)
         Results<Ok<UpdateUserResponse>, NotFound, ProblemHttpResult>
     > ExecuteAsync(UpdateUserRequest request, CancellationToken cancellationToken)
     {
+        var phoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? null
+            : new PhoneNumber(
+                request.PhoneCountryCode!,
+                request.PhoneNumber,
+                string.IsNullOrWhiteSpace(request.PhoneExtension) ? null : request.PhoneExtension
+            );
         var command = new UpdateUserCommand(
             UserId.From(request.Id),
             UserName.From(request.Name),
-            request.PhoneNumber
+            phoneNumber
         );
         var result = await _mediator.Send(command, cancellationToken);
 
@@ -81,16 +103,27 @@ public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
             .MinimumLength(2)
             .MaximumLength(UserName.MaxLength)
             .WithMessage($"User name must not exceed {UserName.MaxLength} characters");
-        RuleFor(x => x.Id)
-            .Must((args, userId) => args.Id == userId)
-            .WithMessage(
-                "Route and body Ids must match; cannot update Id of an existing resource."
-            );
+        // Id comes from the route (route values override the body), so there is no separate
+        // body Id to compare it against.
+        RuleFor(x => x.Id).GreaterThan(0).WithMessage("Id must be greater than zero");
+        RuleFor(x => x.PhoneCountryCode)
+            .NotEmpty()
+            .WithMessage("Phone country code is required with a phone number")
+            .Matches(@"^\+[1-9]\d{0,2}$")
+            .WithMessage("Phone country code must look like +1 or +55")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
+        RuleFor(x => x.PhoneNumber)
+            .Matches(@"^[0-9 ()-]{4,20}$")
+            .WithMessage("Phone number may only contain digits, spaces, '(', ')' and '-'")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
+        RuleFor(x => x.PhoneExtension)
+            .Matches(@"^\d{1,10}$")
+            .WithMessage("Phone extension must be 1 to 10 digits")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneExtension));
     }
 }
 
 public sealed class UpdateUserMapper : Mapper<UpdateUserRequest, UpdateUserResponse, UserDto>
 {
-    public override UpdateUserResponse FromEntity(UserDto e) =>
-        new(new UserRecord(e.Id.Value, e.Name.Value, ""));
+    public override UpdateUserResponse FromEntity(UserDto e) => new(UserRecord.FromDto(e));
 }
