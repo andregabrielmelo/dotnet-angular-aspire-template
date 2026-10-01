@@ -35,10 +35,7 @@ builder
 var app = builder.Build();
 
 await app.UseAppMiddleware();
-if (app.Environment.IsDevelopment())
-{
-    await app.StartDatabase();
-}
+await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
 
 await app.UseJobSchedulingAsync();
 
