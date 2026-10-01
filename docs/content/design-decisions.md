@@ -45,6 +45,12 @@ The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the
 
 Small cross-cutting pieces shared by every layer above Core (base entity/aggregate types, domain event dispatch, the Mediator logging pipeline behavior). Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
 
+### Domain events
+
+Aggregates record what happened with `RegisterDomainEvent` (from `HasDomainEventsBase`), and `EventDispatchInterceptor` publishes those events through Mediator to `IDomainEventHandler<T>` implementations once `SaveChangesAsync` succeeds. The reference example is `User.Create` raising `UserCreatedEvent`, which `EnqueueWelcomeEmailOnUserCreated` (UseCases) handles by enqueuing the welcome email job - so any use case that creates a user gets the email without having to remember it.
+
+Dispatch happens **after the save has committed and outside any transaction**. A handler that fails doesn't roll the original change back (the caller still sees the exception), and anything a handler writes is a separate save. So keep handlers idempotent and cheap - ideally just enqueue a background job, which then has Hangfire's retries - and put anything that must be atomic with the change in the same `SaveChanges`. A lost enqueue still needs a safety net, which for the welcome email is the `EnqueueMissedWelcomeEmails` recurring job. Only `SaveChangesAsync` dispatches; the synchronous `SaveChanges` doesn't.
+
 # The Frontend
 
 Angular, kept deliberately unopinionated beyond an `auth` and `home` feature scaffold and a `core`/`shared` split. It never holds tokens. It is served through `AppTemplate.BackendForFrontend`, which owns the session cookie and proxies `/api` to the Web API, so no CORS is needed. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}) and the [single-origin notes]({{< relref "notes/cors-and-proxy" >}}).
