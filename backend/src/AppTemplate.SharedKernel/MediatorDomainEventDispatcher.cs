@@ -14,7 +14,10 @@ public class MediatorDomainEventDispatcher : IDomainEventDispatcher
         _logger = logger;
     }
 
-    public async Task DispatchAndClearEvents(IEnumerable<IHasDomainEvents> entitiesWithEvents)
+    public async Task DispatchAndClearEvents(
+        IEnumerable<IHasDomainEvents> entitiesWithEvents,
+        CancellationToken cancellationToken = default
+    )
     {
         foreach (IHasDomainEvents entity in entitiesWithEvents)
         {
@@ -24,7 +27,7 @@ public class MediatorDomainEventDispatcher : IDomainEventDispatcher
                 hasDomainEvents.ClearDomainEvents();
 
                 foreach (var domainEvent in events)
-                    await _mediator.Publish(domainEvent).ConfigureAwait(false);
+                    await _mediator.Publish(domainEvent, cancellationToken).ConfigureAwait(false);
             }
             else
             {
