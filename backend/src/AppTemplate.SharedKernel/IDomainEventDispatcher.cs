@@ -5,5 +5,8 @@
 /// </summary>
 public interface IDomainEventDispatcher
 {
-    Task DispatchAndClearEvents(IEnumerable<IHasDomainEvents> entitiesWithEvents);
+    Task DispatchAndClearEvents(
+        IEnumerable<IHasDomainEvents> entitiesWithEvents,
+        CancellationToken cancellationToken = default
+    );
 }
