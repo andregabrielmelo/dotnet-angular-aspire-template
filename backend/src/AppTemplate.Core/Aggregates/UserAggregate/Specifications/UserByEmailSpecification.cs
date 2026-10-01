@@ -2,7 +2,7 @@
 
 namespace AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 
-/// <summary>Read-only existence check (used by GetOrCreateCurrentUserHandler) - AsNoTracking.</summary>
+/// <summary>Read-only existence check (used by ProvisionCurrentUserHandler) - AsNoTracking.</summary>
 public class UserByEmailSpecification : Specification<User>
 {
     public UserByEmailSpecification(EmailAddress email) =>

@@ -13,16 +13,8 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 {
     private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
 
-    private async Task<CurrentUserResponse> ProvisionAsync(
-        string subject,
-        params string[] permissions
-    )
-    {
-        var me = await factory
-            .CreateAuthenticatedClient(subject, permissions)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        return me!;
-    }
+    private Task<CurrentUserResponse> ProvisionAsync(string subject, params string[] permissions) =>
+        factory.CreateAuthenticatedClient(subject, permissions).ProvisionMeAsync();
 
     // --- Authentication -------------------------------------------------------------------
 
@@ -37,26 +29,55 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     // --- /users/me (any authenticated user) -------------------------------------------------
 
     [Fact]
-    public async Task Me_OnFirstCall_ProvisionsTheUserFromTokenClaims()
+    public async Task GetMe_BeforeProvisioning_ReturnsNotFoundAndCreatesNothing()
+    {
+        var client = factory.CreateAuthenticatedClient(NewSubject());
+
+        var first = await client.GetAsync("/users/me");
+        var second = await client.GetAsync("/users/me");
+
+        Assert.Equal(HttpStatusCode.NotFound, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostMe_OnFirstCall_CreatesTheUserFromTokenClaims()
     {
         var subject = NewSubject();
 
-        var me = await ProvisionAsync(subject);
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PostAsync("/users/me", null);
+        var me = await response.Content.ReadFromJsonAsync<CurrentUserResponse>();
 
-        Assert.Equal($"Test {subject}", me.Name);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal($"Test {subject}", me!.Name);
         Assert.Equal($"{subject}@example.com", me.Email);
         Assert.Empty(me.Permissions);
     }
 
     [Fact]
-    public async Task Me_CalledTwice_ReturnsTheSameUser()
+    public async Task PostMe_CalledAgain_ReturnsTheSameUserWithOk()
     {
         var client = factory.CreateAuthenticatedClient(NewSubject());
+        var first = await client.ProvisionMeAsync();
 
-        var first = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        var second = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        var again = await client.PostAsync("/users/me", null);
+        var second = await again.Content.ReadFromJsonAsync<CurrentUserResponse>();
 
-        Assert.Equal(first!.Id, second!.Id);
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal(first.Id, second!.Id);
+    }
+
+    [Fact]
+    public async Task GetMe_AfterProvisioning_ReturnsTheUser()
+    {
+        var client = factory.CreateAuthenticatedClient(NewSubject());
+        var provisioned = await client.ProvisionMeAsync();
+
+        var me = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+
+        Assert.Equal(provisioned.Id, me!.Id);
     }
 
     [Fact]

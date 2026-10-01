@@ -1,16 +1,20 @@
+using System.Net;
 using System.Net.Http.Json;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.FunctionalTests.UserFeatures;
 using AppTemplate.Infrastructure.Data;
+using AppTemplate.Infrastructure.Jobs;
+using AppTemplate.Infrastructure.Jobs.FireAndForget;
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
 using AppTemplate.Web.Features.UserFeatures;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests.Data;
@@ -55,10 +59,10 @@ public class PostgresPersistenceTests(AppTemplateWebApplicationFactory factory)
         var externalId = NewSubject();
         await AddAsync(NewUser(externalId));
 
-        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+        var ex = await Assert.ThrowsAsync<UniqueConstraintViolationException>(() =>
             AddAsync(NewUser(externalId, email: $"other-{externalId}@example.com"))
         );
-        AssertUniqueViolation(ex, "external_id");
+        Assert.Contains("external_id", ex.ConstraintName);
     }
 
     [Fact]
@@ -67,17 +71,10 @@ public class PostgresPersistenceTests(AppTemplateWebApplicationFactory factory)
         var email = $"{NewSubject()}@example.com";
         await AddAsync(NewUser(NewSubject(), email));
 
-        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+        var ex = await Assert.ThrowsAsync<UniqueConstraintViolationException>(() =>
             AddAsync(NewUser(NewSubject(), email))
         );
-        AssertUniqueViolation(ex, "email");
-    }
-
-    private static void AssertUniqueViolation(DbUpdateException ex, string column)
-    {
-        var postgres = Assert.IsType<PostgresException>(ex.InnerException);
-        Assert.Equal(PostgresErrorCodes.UniqueViolation, postgres.SqlState);
-        Assert.Contains(column, postgres.ConstraintName);
+        Assert.Contains("email", ex.ConstraintName);
     }
 
     [Fact]
@@ -123,16 +120,61 @@ public class PostgresPersistenceTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task ListEndpoint_ReturnsProvisionedUsers()
     {
-        var me = await factory
-            .CreateAuthenticatedClient(NewSubject())
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me"); // provisions on first call
+        var me = await factory.CreateAuthenticatedClient(NewSubject()).ProvisionMeAsync();
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
             .GetFromJsonAsync<UserPage>($"/users?page=1&per_page={Constants.MAX_PAGE_SIZE}");
 
-        Assert.Contains(response!.Items, item => item.Id == me!.Id);
+        Assert.Contains(response!.Items, item => item.Id == me.Id);
     }
 
     private sealed record UserPage(List<UserRecord> Items);
+
+    [Fact]
+    public async Task ConcurrentProvisioning_OfTheSameIdentity_CreatesOneUser()
+    {
+        // e.g. the SPA open in two tabs, or a retried request, on a first sign-in.
+        var subject = NewSubject();
+        var clients = Enumerable
+            .Range(0, 8)
+            .Select(_ => factory.CreateAuthenticatedClient(subject))
+            .ToList();
+
+        var responses = await Task.WhenAll(
+            clients.Select(client => client.PostAsync("/users/me", content: null))
+        );
+
+        Assert.All(
+            responses,
+            response =>
+                Assert.True(
+                    response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created,
+                    $"Expected 200 or 201, got {(int)response.StatusCode}: "
+                        + response.Content.ReadAsStringAsync().Result
+                )
+        );
+        var users = await Task.WhenAll(
+            responses.Select(response => response.Content.ReadFromJsonAsync<CurrentUserResponse>())
+        );
+        Assert.Single(users.Select(user => user!.Id).Distinct());
+
+        var rows = await InScopeAsync(services =>
+            services
+                .GetRequiredService<ApplicationDatabaseContext>()
+                .Users.CountAsync(user => user.ExternalId == subject)
+        );
+        Assert.Equal(1, rows);
+
+        // Only the request that actually inserted the user enqueued its welcome email.
+        var welcomeEmails = factory
+            .Services.GetRequiredService<JobStorage>()
+            .GetMonitoringApi()
+            .EnqueuedJobs(JobQueues.Critical, 0, 1000)
+            .Count(job =>
+                job.Value.Job.Type == typeof(WelcomeEmailJob)
+                && (int)job.Value.Job.Args[0] == users[0]!.Id
+            );
+        Assert.Equal(1, welcomeEmails);
+    }
 }

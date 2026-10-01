@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using AppTemplate.FunctionalTests.UserFeatures;
 using AppTemplate.UseCases;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
@@ -23,12 +24,8 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
 {
     private static string NewSubject() => $"sub-{Guid.NewGuid():N}";
 
-    private async Task<CurrentUserResponse> ProvisionAsync(string subject) =>
-        (
-            await factory
-                .CreateAuthenticatedClient(subject)
-                .GetFromJsonAsync<CurrentUserResponse>("/users/me")
-        )!;
+    private Task<CurrentUserResponse> ProvisionAsync(string subject) =>
+        factory.CreateAuthenticatedClient(subject).ProvisionMeAsync();
 
     [Fact]
     public async Task GetById_AfterUpdate_ReturnsTheNewName()
@@ -67,14 +64,29 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
     public async Task Me_AfterBeingRenamed_ReturnsTheNewName()
     {
         var subject = NewSubject();
-        var me = await ProvisionAsync(subject); // cached by external id
+        var me = await ProvisionAsync(subject);
+        var client = factory.CreateAuthenticatedClient(subject);
+        await client.GetFromJsonAsync<CurrentUserResponse>("/users/me"); // cached by external id
 
         await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
             .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed By Admin" });
-        var afterUpdate = await ProvisionAsync(subject);
+        var afterUpdate = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
 
-        Assert.Equal("Renamed By Admin", afterUpdate.Name);
+        Assert.Equal("Renamed By Admin", afterUpdate!.Name);
+    }
+
+    [Fact]
+    public async Task Me_BeforeAndAfterProvisioning_DoesNotServeTheCachedMiss()
+    {
+        var client = factory.CreateAuthenticatedClient(NewSubject());
+        var before = await client.GetAsync("/users/me"); // caches "no such user"
+
+        var provisioned = await client.ProvisionMeAsync();
+        var after = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+
+        Assert.Equal(HttpStatusCode.NotFound, before.StatusCode);
+        Assert.Equal(provisioned.Id, after!.Id);
     }
 
     [Fact]
@@ -110,12 +122,13 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
 
         // Any user write evicts cached lists.
         var subject = NewSubject();
-        var me = await CreateClient(app, subject)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        await CreateClient(app, subject)
-            .PutAsJsonAsync($"/users/{me!.Id}", new { id = me.Id, name = "Changed" });
+        var me = await CreateClient(app, subject).ProvisionMeAsync();
         await Client(Permission.UsersRead).GetAsync("/users?page=1&per_page=10");
-        Assert.Equal(3, listQuery.Calls);
+        Assert.Equal(3, listQuery.Calls); // provisioning is a write too
+        await CreateClient(app, subject)
+            .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Changed" });
+        await Client(Permission.UsersRead).GetAsync("/users?page=1&per_page=10");
+        Assert.Equal(4, listQuery.Calls);
     }
 
     private static HttpClient CreateClient(

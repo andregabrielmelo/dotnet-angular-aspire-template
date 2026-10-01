@@ -1,24 +1,14 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Users.GetOrCreateCurrent;
+﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.UseCases.Users.GetCurrent;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
-/// <param name="Permissions">What the caller may do - lets clients show or hide actions. The API still enforces every permission itself.</param>
-public sealed record CurrentUserResponse(
-    int Id,
-    string Name,
-    string Email,
-    IReadOnlyList<string> Permissions
-);
-
 /// <summary>
-/// Returns the caller's own profile, creating it on first use (just-in-time provisioning) -
-/// users register in Keycloak, so this is where the domain User row comes into existence.
+/// Returns the caller's own profile. Read-only: a caller who hasn't been provisioned yet gets
+/// 404 and should <c>POST /users/me</c> (see <see cref="ProvisionMeEndpoint"/>).
 /// </summary>
 public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
-    : EndpointWithoutRequest<Results<Ok<CurrentUserResponse>, ProblemHttpResult>>
+    : EndpointWithoutRequest<Results<Ok<CurrentUserResponse>, NotFound, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -28,7 +18,7 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
         {
             s.Summary = "Get the current user";
             s.Description =
-                "Returns the authenticated caller's profile, creating it from the access token's claims on first call.";
+                "Returns the authenticated caller's profile. 404 until it has been created with POST /users/me.";
             s.ResponseExamples[200] = new CurrentUserResponse(
                 1,
                 "Sample User",
@@ -37,9 +27,9 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
             );
 
             s.Responses[200] = "Current user returned successfully";
-            s.Responses[400] = "The access token is missing a required claim";
+            s.Responses[400] = "The access token has no 'sub' claim";
             s.Responses[401] = "Missing or invalid access token";
-            s.Responses[409] = "The token's email is already linked to another user";
+            s.Responses[404] = "Not provisioned yet - call POST /users/me";
         });
 
         Tags("Users");
@@ -49,75 +39,37 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
                 .Produces<CurrentUserResponse>(200, "application/json")
                 .ProducesProblem(400)
                 .ProducesProblem(401)
-                .ProducesProblem(409)
+                .Produces(404)
         );
     }
 
-    public override async Task<Results<Ok<CurrentUserResponse>, ProblemHttpResult>> ExecuteAsync(
-        CancellationToken cancellationToken
-    )
+    public override async Task<
+        Results<Ok<CurrentUserResponse>, NotFound, ProblemHttpResult>
+    > ExecuteAsync(CancellationToken cancellationToken)
     {
-        var externalId = User.FindFirst("sub")?.Value;
-        var email = User.FindFirst("email")?.Value;
-        var name = FirstValidUserName(
-            User.FindFirst("name")?.Value,
-            User.FindFirst("preferred_username")?.Value,
-            email
-        );
-
-        if (
-            string.IsNullOrWhiteSpace(externalId)
-            || string.IsNullOrWhiteSpace(email)
-            || name is null
-        )
+        var externalId = CurrentUserIdentity.ReadExternalId(User);
+        if (externalId is null)
         {
             return TypedResults.Problem(
-                title: "Incomplete identity",
-                detail: "The access token must carry 'sub', 'email' and a usable name claim.",
+                title: CurrentUserIdentity.IncompleteTitle,
+                detail: "The access token must carry a 'sub' claim.",
                 statusCode: StatusCodes.Status400BadRequest
             );
         }
 
-        var command = new GetOrCreateCurrentUserCommand(
-            externalId,
-            name.Value,
-            new EmailAddress(email)
-        );
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await _mediator.Send(new GetCurrentUserQuery(externalId), cancellationToken);
 
         return result.Status switch
         {
             ResultStatus.Ok => TypedResults.Ok(
-                new CurrentUserResponse(
-                    result.Value.Id.Value,
-                    result.Value.Name.Value,
-                    result.Value.Email.Value,
-                    _currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
-                )
+                CurrentUserResponse.From(result.Value, _currentUser.Permissions)
             ),
-            ResultStatus.Conflict => TypedResults.Problem(
-                title: "Conflict",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status409Conflict
-            ),
+            ResultStatus.NotFound => TypedResults.NotFound(),
             _ => TypedResults.Problem(
                 title: "Request failed",
                 detail: string.Join("; ", result.Errors),
                 statusCode: StatusCodes.Status400BadRequest
             ),
         };
-    }
-
-    private static UserName? FirstValidUserName(params string?[] candidates)
-    {
-        foreach (var candidate in candidates)
-        {
-            if (candidate is not null && UserName.TryFrom(candidate, out var userName))
-            {
-                return userName;
-            }
-        }
-
-        return null;
     }
 }

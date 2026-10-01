@@ -18,7 +18,13 @@ Authorization: Bearer {{token}}
 
 ###
 
-// Get (and on first call, create) the current user from the token's claims
+// Create the current user from the token's claims (idempotent - 201 first time, then 200)
+POST {{host}}:{{port}}/users/me
+Authorization: Bearer {{token}}
+
+###
+
+// Get the current user (404 until provisioned with the POST above)
 GET {{host}}:{{port}}/users/me
 Authorization: Bearer {{token}}
 

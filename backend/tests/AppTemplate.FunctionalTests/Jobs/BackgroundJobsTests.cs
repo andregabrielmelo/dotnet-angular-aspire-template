@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.FunctionalTests.UserFeatures;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.Infrastructure.Jobs.FireAndForget;
@@ -18,12 +19,8 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
 {
     private JobStorage Storage => factory.Services.GetRequiredService<JobStorage>();
 
-    private async Task<CurrentUserResponse> ProvisionAsync(string subject) =>
-        (
-            await factory
-                .CreateAuthenticatedClient(subject)
-                .GetFromJsonAsync<CurrentUserResponse>("/users/me")
-        )!;
+    private Task<CurrentUserResponse> ProvisionAsync(string subject) =>
+        factory.CreateAuthenticatedClient(subject).ProvisionMeAsync();
 
     private async Task RunWelcomeEmailJobAsync(int userId)
     {
