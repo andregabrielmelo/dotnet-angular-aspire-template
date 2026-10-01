@@ -12,20 +12,22 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Xunit;
 
 namespace AppTemplate.FunctionalTests;
 
 /// <summary>
-/// Swaps the real Postgres-backed DbContext for an isolated in-memory one, so functional
-/// tests exercise the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline without
-/// needing a real database. "Testing" environment keeps Program.cs from running real
-/// migrations against it (EF Core's InMemory provider doesn't support them).
+/// Hosts the real API - HTTP -> FastEndpoints -> Mediator -> EF Core -> Postgres - against a
+/// fresh database in a shared Postgres container (see <see cref="PostgresTestDatabase"/>), so
+/// unique indexes, database defaults, raw SQL and owned types behave as in production. Needs
+/// Docker: mark every test class that uses this factory with
+/// <c>[Trait(TestCategories.Name, TestCategories.RequiresDocker)]</c>.
 /// Keycloak JWT validation is replaced by <see cref="TestAuthHandler"/> - use
 /// <see cref="CreateAuthenticatedClient"/> for calls that need a signed-in user.
 /// </summary>
-public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
+public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly string _databaseName = $"AppTemplateFunctionalTests-{Guid.NewGuid()}";
+    private string? _connectionString;
 
     /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
     public FakePasswordResetService PasswordResetService { get; } = new();
@@ -40,10 +42,13 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
 
-        // AddInfrastructureServices reads ConnectionStrings:apptemplate and throws if it's
-        // missing, before ConfigureServices below gets a chance to replace the DbContext -
-        // supply a placeholder so that guard passes; it's never actually connected to.
-        builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
+        builder.UseSetting(
+            "ConnectionStrings:apptemplate",
+            _connectionString
+                ?? throw new InvalidOperationException(
+                    "The factory is used before InitializeAsync - use it as an xUnit fixture."
+                )
+        );
         // KeycloakAdminOptions is validated on start; the real client is replaced below.
         builder.UseSetting("Keycloak:Admin:ClientSecret", "functional-tests");
         builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
@@ -53,25 +58,6 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Removing just DbContextOptions<T> leaves EF Core's internal per-provider
-            // service registrations from the original AddDbContext call behind, which then
-            // conflicts with the ones InMemory registers below ("Only a single database
-            // provider can be registered..."). Strip everything EF Core registered and
-            // start clean.
-            var efCoreDescriptors = services
-                .Where(d =>
-                    d.ServiceType.Namespace?.StartsWith("Microsoft.EntityFrameworkCore") == true
-                )
-                .ToList();
-            foreach (var descriptor in efCoreDescriptors)
-            {
-                services.Remove(descriptor);
-            }
-
-            services.AddDbContext<ApplicationDatabaseContext>(options =>
-                options.UseInMemoryDatabase(_databaseName)
-            );
-
             services.RemoveAll<IPasswordResetService>();
             services.AddSingleton<IPasswordResetService>(PasswordResetService);
 
@@ -103,6 +89,19 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
                 );
         });
     }
+
+    /// <summary>Creates this host's database (by running the migrations) before any test uses it.</summary>
+    public async Task InitializeAsync()
+    {
+        _connectionString = await PostgresTestDatabase.NewDatabaseConnectionStringAsync();
+
+        using var scope = Services.CreateScope();
+        await scope
+            .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
+            .Database.MigrateAsync();
+    }
+
+    Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
 
     private static int _nextClientAddress;
 

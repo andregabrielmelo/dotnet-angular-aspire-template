@@ -15,7 +15,8 @@ public class ListUsersHandler(IListUsersQueryService query)
     {
         var result = await _query.ListAsync(
             request.Page ?? 1,
-            request.PerPage ?? Constants.DEFAULT_PAGE_SIZE
+            request.PerPage ?? Constants.DEFAULT_PAGE_SIZE,
+            cancellationToken
         );
 
         return Result.Success(result);

@@ -51,6 +51,15 @@ jobs:
         working-directory: backend
         run: dotnet build AppTemplate.slnx --configuration Release --no-restore
 
+      # Functional tests run against a real Postgres via Testcontainers, which needs a Docker
+      # daemon that runs Linux containers - only the Linux runners have one. Windows and macOS
+      # run everything else (unit tests, and functional tests that don't touch the database).
       - name: Test
+        if: runner.os == 'Linux'
         working-directory: backend
         run: dotnet test AppTemplate.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Test (without Docker)
+        if: runner.os != 'Linux'
+        working-directory: backend
+        run: dotnet test AppTemplate.slnx --configuration Release --no-build --filter "Category!=RequiresDocker" --logger "console;verbosity=normal"

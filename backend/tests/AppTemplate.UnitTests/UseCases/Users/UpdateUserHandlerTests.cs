@@ -23,6 +23,8 @@ public class UpdateUserHandlerTests
     private static readonly UpdateUserCommand Command = new(
         UserId.From(1),
         UserName.From("Grace Hopper"),
+        null,
+        null,
         null
     );
 
@@ -78,6 +80,56 @@ public class UpdateUserHandlerTests
         var result = await Handle();
 
         Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_WithPhoneNumber_StoresAndReturnsIt()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+        var command = Command with
+        {
+            PhoneNumber = "11 98765 4321",
+            PhoneCountryCode = "+55",
+            PhoneExtension = "12",
+        };
+
+        var result = await new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
+            .Handle(command, CancellationToken.None)
+            .AsTask();
+
+        var expected = new PhoneNumber("+55", "11 98765 4321", "12");
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, _target.PhoneNumber);
+        Assert.Equal(expected, result.Value.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Handle_WithPhoneNumberButNoCountryCode_FailsAndChangesNothing()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+
+        var result = await new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
+            .Handle(Command with { PhoneNumber = "11 98765 4321" }, CancellationToken.None)
+            .AsTask();
+
+        Assert.Equal(ResultStatus.Error, result.Status);
+        Assert.Equal("Ada Lovelace", _target.Name.Value);
+        Assert.Null(_target.PhoneNumber);
+        await _repository
+            .DidNotReceive()
+            .UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithoutPhoneNumber_KeepsTheCurrentOne()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+        var phoneNumber = new PhoneNumber("+55", "11 98765 4321", null);
+        _target.UpdatePhoneNumber(phoneNumber);
+
+        await Handle();
+
+        Assert.Equal(phoneNumber, _target.PhoneNumber);
     }
 
     [Fact]

@@ -32,7 +32,9 @@ Content-Type: application/json
 
 {
   "id": {{id_to_update}},
-  "name": "ardalis2"
+  "name": "ardalis2",
+  "phoneNumber": "555 0100",
+  "phoneCountryCode": "+1"
 }
 
 ###

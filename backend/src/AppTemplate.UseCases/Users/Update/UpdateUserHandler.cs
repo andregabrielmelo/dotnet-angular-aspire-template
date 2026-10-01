@@ -5,8 +5,15 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Update;
 
-public record UpdateUserCommand(UserId UserId, UserName UserName, string? PhoneNumber)
-    : Mediator.ICommand<Result<UserDto>>;
+/// <param name="PhoneNumber">Leave empty to keep the current phone number.</param>
+/// <param name="PhoneCountryCode">Required with <paramref name="PhoneNumber"/>, e.g. "+55".</param>
+public record UpdateUserCommand(
+    UserId UserId,
+    UserName UserName,
+    string? PhoneNumber,
+    string? PhoneCountryCode,
+    string? PhoneExtension
+) : Mediator.ICommand<Result<UserDto>>;
 
 /// <summary>
 /// Resource-based authorization: anyone may update their own profile, while updating someone
@@ -33,10 +40,22 @@ public class UpdateUserHandler(
         if (!isOwnProfile && !_currentUser.HasPermission(Permission.UsersWrite))
             return Result<UserDto>.Forbidden();
 
-        user.UpdateName(command.UserName);
-        if (!string.IsNullOrEmpty(command.PhoneNumber))
+        PhoneNumber? phoneNumber = null;
+        if (!string.IsNullOrWhiteSpace(command.PhoneNumber))
         {
-            var phoneNumber = new PhoneNumber("+1", command.PhoneNumber, String.Empty);
+            if (string.IsNullOrWhiteSpace(command.PhoneCountryCode))
+                return Result<UserDto>.Error("Phone country code is required with a phone number");
+
+            phoneNumber = new PhoneNumber(
+                command.PhoneCountryCode,
+                command.PhoneNumber,
+                command.PhoneExtension
+            );
+        }
+
+        user.UpdateName(command.UserName);
+        if (phoneNumber is not null)
+        {
             user.UpdatePhoneNumber(phoneNumber);
         }
 

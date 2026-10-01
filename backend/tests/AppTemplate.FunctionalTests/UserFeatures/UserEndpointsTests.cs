@@ -1,17 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
-using AppTemplate.UseCases;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.List;
 using AppTemplate.Web.Features.UserFeatures;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace AppTemplate.FunctionalTests.UserFeatures;
 
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
@@ -84,29 +80,11 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_WithUsersRead_ReturnsUsers()
     {
-        // ListUsersQueryService uses raw SQL, which EF Core's InMemory provider can't run
-        // (see ADR 006) - stub it, since this test is about authorization.
-        var client = factory
-            .WithWebHostBuilder(builder =>
-                builder.ConfigureTestServices(services =>
-                {
-                    services.RemoveAll<IListUsersQueryService>();
-                    services.AddSingleton<IListUsersQueryService, EmptyListUsersQueryService>();
-                })
-            )
-            .CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, NewSubject());
-        client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, Permission.UsersRead);
-
-        var response = await client.GetAsync("/users");
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
+            .GetAsync("/users");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    private sealed class EmptyListUsersQueryService : IListUsersQueryService
-    {
-        public Task<PagedResult<UserDto>> ListAsync(int page, int perPage) =>
-            Task.FromResult(new PagedResult<UserDto>([], page, perPage, 0, 0));
     }
 
     [Fact]
@@ -184,6 +162,91 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
             .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed Myself" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithPhoneNumber_EchoesItBack()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber = "11 98765 4321",
+                    phoneCountryCode = "+55",
+                }
+            );
+        var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("+55 11 98765 4321", body!.User.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Update_WithPhoneNumberButNoCountryCode_IsRejected()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new { name = "Ada Lovelace", phoneNumber = "11 98765 4321" }
+            );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("11 98765 4321", "55", null)] // country code without '+'
+    [InlineData("11 98765 4321", "+5555", null)] // country code too long
+    [InlineData("call me", "+55", null)] // not a phone number
+    [InlineData("11 98765 4321", "+55", "ext12")] // extension isn't digits
+    public async Task Update_WithInvalidPhoneParts_IsRejected(
+        string phoneNumber,
+        string phoneCountryCode,
+        string? phoneExtension
+    )
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber,
+                    phoneCountryCode,
+                    phoneExtension,
+                }
+            );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_UsesTheRouteId_EvenIfTheBodyNamesAnotherUser()
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+        var other = await ProvisionAsync(NewSubject());
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync($"/users/{me.Id}", new { id = other.Id, name = "Renamed Myself" });
+        var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(me.Id, body!.User.Id);
     }
 
     [Fact]

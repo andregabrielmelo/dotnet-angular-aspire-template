@@ -2,7 +2,7 @@
 
 ## `backend-build.yml`
 
-Restores, format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. Triggers on pushes/PRs that touch `backend/**`. `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against an in-memory database (no Postgres/Docker needed), so both run everywhere in the matrix.
+Restores, format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. Triggers on pushes/PRs that touch `backend/**`. `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against a real Postgres started with [Testcontainers](https://dotnet.testcontainers.org/). Hosted Windows and macOS runners can't run Linux containers, so only the Linux job runs the whole suite; the others skip tests marked `[Trait("Category", "RequiresDocker")]` (`--filter "Category!=RequiresDocker"`).
 
 ## `frontend-build.yml`
 
