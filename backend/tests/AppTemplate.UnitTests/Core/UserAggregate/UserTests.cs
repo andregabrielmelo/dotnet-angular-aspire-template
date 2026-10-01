@@ -1,3 +1,5 @@
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
+
 namespace AppTemplate.UnitTests.Core.UserAggregate;
 
 public class UserTests
@@ -18,6 +20,15 @@ public class UserTests
         Assert.Equal("Ada Lovelace", user.Name.Value);
         Assert.Equal("ada@example.com", user.Email.Value);
         Assert.Null(user.PhoneNumber);
+    }
+
+    [Fact]
+    public void Create_RaisesUserCreatedEvent()
+    {
+        var user = CreateUser();
+
+        var created = Assert.IsType<UserCreatedEvent>(Assert.Single(user.DomainEvents));
+        Assert.Same(user, created.User);
     }
 
     [Theory]
