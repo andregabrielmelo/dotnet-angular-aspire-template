@@ -58,7 +58,7 @@ Not run day-to-day, but useful when editing docs: requires the `hugo-book` theme
 
 Dependencies point inward; nothing below depends on something above it in this list:
 
-- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, the Mediator `LoggingBehavior` pipeline behavior. Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
+- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch (`EventDispatchInterceptor` publishes them via Mediator after `SaveChangesAsync` commits - outside any transaction, so handlers must be idempotent and should just enqueue work; see `UserCreatedEvent` → `EnqueueWelcomeEmailOnUserCreated`), the Mediator `LoggingBehavior` pipeline behavior. Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
 - **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`), value objects, specifications, interfaces Infrastructure implements. Near-zero external dependencies (`Ardalis.Specification`, `Vogen`).
 - **`AppTemplate.UseCases`** - CQRS commands/queries dispatched via `Mediator` (martinothamar/Mediator, source-generated - **not** MediatR). Depends on Core only; data access goes through `IRepository<T>` (`SharedKernel/IRepository.cs`, an `Ardalis.Specification` repository) and query-service interfaces defined here, implemented in Infrastructure.
 - **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`), email (MailKit), repository/query-service implementations. Anything talking to the outside world lives here.
@@ -86,7 +86,7 @@ Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `h
 - **Fire-and-forget jobs** (`Jobs/FireAndForget/`) are thin adapters: primitive arguments, a Mediator dispatch, and a throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire.
 - **Idempotency:** Hangfire runs every job at least once, so jobs must be safe to repeat. Nothing request-scoped (such as `ICurrentUser`) is available in jobs.
 - **Current jobs:**
-  - `WelcomeEmailJob`: enqueued when `POST /users/me` provisions a user; `critical` queue; guarded by `User.WelcomeEmailSentAtUtc`.
+  - `WelcomeEmailJob`: enqueued by `EnqueueWelcomeEmailOnUserCreated` when a new user is saved (`UserCreatedEvent`; seed data clears the event); `critical` queue; guarded by `User.WelcomeEmailSentAtUtc`.
   - `SyncUserProfilesJob`: hourly; copies names and emails from Keycloak.
   - `EnqueueMissedWelcomeEmailsJob`: hourly; re-enqueues welcome emails whose enqueue was lost (users 2 hours to 7 days old, by `User.CreatedAtUtc`, still unsent).
 - **Queues:** Hangfire.PostgreSql fetches queues alphabetically, so the name sets the priority. `critical` sorts before `default`.
