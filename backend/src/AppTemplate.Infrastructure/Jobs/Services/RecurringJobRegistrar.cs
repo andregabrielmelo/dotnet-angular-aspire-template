@@ -1,5 +1,4 @@
-﻿using AppTemplate.Infrastructure.Data;
-using Hangfire;
+﻿using Hangfire;
 using Hangfire.Storage;
 
 namespace AppTemplate.Infrastructure.Jobs.Services;
@@ -9,22 +8,21 @@ namespace AppTemplate.Infrastructure.Jobs.Services;
 /// <list type="bullet">
 /// <item>creates or updates every definition's schedule, re-adding jobs someone deleted from the
 /// dashboard;</item>
-/// <item>schedules paused jobs (a row in <c>paused_jobs</c>) with <see cref="Cron.Never"/>, so a
-/// pause survives restarts;</item>
 /// <item>removes runner jobs whose definition no longer exists (renamed or deleted in code),
-/// which would otherwise keep firing and do nothing.</item>
+/// which would otherwise keep firing and do nothing, together with their pause state.</item>
 /// </list>
-/// Idempotent (keyed by the stable job id), so it runs on every startup of every instance.
+/// Pause state (<see cref="PausedRecurringJobs"/>) doesn't affect the schedule, so a paused job is
+/// registered like any other and stays paused. Idempotent (keyed by the stable job id), so it runs
+/// on every startup of every instance.
 /// </summary>
 public sealed partial class RecurringJobRegistrar(
     IEnumerable<IRecurringJobDefinition> definitions,
     IRecurringJobManager jobManager,
     JobStorage jobStorage,
-    ApplicationDatabaseContext dbContext,
     ILogger<RecurringJobRegistrar> logger
 )
 {
-    public async Task<int> RegisterAllAsync(CancellationToken cancellationToken)
+    public Task<int> RegisterAllAsync(CancellationToken cancellationToken)
     {
         var all = definitions.ToList();
 
@@ -41,26 +39,16 @@ public sealed partial class RecurringJobRegistrar(
             LogNoJobs(logger);
         }
 
-        var pausedJobIds = (
-            await dbContext
-                .PausedJobs.AsNoTracking()
-                .Select(p => p.JobId)
-                .ToListAsync(cancellationToken)
-        ).ToHashSet(StringComparer.Ordinal);
-
         foreach (var definition in all)
         {
-            var isPaused = pausedJobIds.Contains(definition.JobId);
-            Schedule(definition.JobId, isPaused ? Cron.Never() : definition.CronExpression);
-            LogRegistered(logger, definition.JobId, definition.CronExpression, isPaused);
+            Schedule(definition.JobId, definition.CronExpression);
+            LogRegistered(logger, definition.JobId, definition.CronExpression);
         }
 
-        await RemoveOrphansAsync(
-            all.Select(d => d.JobId).ToHashSet(StringComparer.Ordinal),
-            cancellationToken
-        );
+        cancellationToken.ThrowIfCancellationRequested();
+        RemoveOrphans(all.Select(d => d.JobId).ToHashSet(StringComparer.Ordinal));
 
-        return all.Count;
+        return Task.FromResult(all.Count);
     }
 
     /// <summary>
@@ -69,16 +57,10 @@ public sealed partial class RecurringJobRegistrar(
     /// Hangfire in any other way are never touched, and neither are jobs whose stored invocation
     /// can't be loaded - there's no proof they're ours (the admin API can still remove them).
     /// </summary>
-    private async Task RemoveOrphansAsync(
-        IReadOnlySet<string> definitionIds,
-        CancellationToken cancellationToken
-    )
+    private void RemoveOrphans(IReadOnlySet<string> definitionIds)
     {
-        List<RecurringJobDto> stored;
-        using (var connection = jobStorage.GetConnection())
-        {
-            stored = connection.GetRecurringJobs();
-        }
+        using var connection = jobStorage.GetConnection();
+        var stored = connection.GetRecurringJobs();
 
         var orphanIds = new List<string>();
         foreach (var job in stored)
@@ -98,29 +80,16 @@ public sealed partial class RecurringJobRegistrar(
             }
         }
 
-        if (orphanIds.Count == 0)
-        {
-            return;
-        }
-
         foreach (var jobId in orphanIds)
         {
             jobManager.RemoveIfExists(jobId);
+            PausedRecurringJobs.Resume(connection, jobId);
             LogRemovedOrphan(logger, jobId);
-        }
-
-        var orphanPauses = await dbContext
-            .PausedJobs.Where(p => orphanIds.Contains(p.JobId))
-            .ToListAsync(cancellationToken);
-        if (orphanPauses.Count > 0)
-        {
-            dbContext.PausedJobs.RemoveRange(orphanPauses);
-            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 
     /// <summary>Points the job at <see cref="RecurringJobRunner"/> - only the id is stored.</summary>
-    public void Schedule(string jobId, string cronExpression) =>
+    private void Schedule(string jobId, string cronExpression) =>
         jobManager.AddOrUpdate<RecurringJobRunner>(
             jobId,
             JobQueues.Default,
@@ -146,12 +115,7 @@ public sealed partial class RecurringJobRegistrar(
 
     [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Registered recurring job '{JobId}' ({Cron}), paused: {IsPaused}"
+        Message = "Registered recurring job '{JobId}' ({Cron})"
     )]
-    private static partial void LogRegistered(
-        ILogger logger,
-        string jobId,
-        string cron,
-        bool isPaused
-    );
+    private static partial void LogRegistered(ILogger logger, string jobId, string cron);
 }

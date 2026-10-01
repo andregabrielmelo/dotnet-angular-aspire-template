@@ -17,7 +17,7 @@ public class PauseJobEndpoint(IJobManagementService _jobs)
         {
             s.Summary = "Pause a recurring job";
             s.Description =
-                "Stops the schedule until resumed. Survives restarts; pausing twice is a no-op.";
+                "Skips scheduled runs until resumed; the schedule itself is kept. Survives restarts; pausing twice is a no-op.";
             s.Responses[204] = "Paused";
             s.Responses[400] = "Invalid job id";
             s.Responses[403] = $"Requires the {Permission.JobsManage} permission";

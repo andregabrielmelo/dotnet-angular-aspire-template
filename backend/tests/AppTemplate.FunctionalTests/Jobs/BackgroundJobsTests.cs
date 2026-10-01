@@ -58,7 +58,7 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
     {
         var me = await ProvisionAsync($"sub-{Guid.NewGuid():N}");
 
-        var enqueued = Storage.GetMonitoringApi().EnqueuedJobs(JobQueues.Emails, 0, 1000);
+        var enqueued = Storage.GetMonitoringApi().EnqueuedJobs(JobQueues.Critical, 0, 1000);
 
         Assert.Contains(
             enqueued,

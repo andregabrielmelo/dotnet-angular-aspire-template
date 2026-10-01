@@ -17,8 +17,10 @@ public sealed partial class RecurringJobRunner(
     /// <summary>
     /// Few retries (Hangfire's default is 10): a recurring job runs again on its next schedule
     /// anyway. Runs of the same job never overlap - the lock resource includes the job id
-    /// (argument {0}), so different jobs still run in parallel.
+    /// (argument {0}), so different jobs still run in parallel. Paused jobs never get a run
+    /// created (<see cref="SkipWhenPausedAttribute"/>).
     /// </summary>
+    [SkipWhenPaused]
     [AutomaticRetry(Attempts = 2, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     [DisableConcurrentExecution("recurring-job:{0}", 10 * 60)]
     [JobDisplayName("Recurring job: {0}")]

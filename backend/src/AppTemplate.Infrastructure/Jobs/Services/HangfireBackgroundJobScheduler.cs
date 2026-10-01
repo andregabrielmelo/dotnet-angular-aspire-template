@@ -12,7 +12,7 @@ public sealed class HangfireBackgroundJobScheduler(IBackgroundJobClient client)
     // token when the job runs.
     public string EnqueueWelcomeEmail(UserId userId) =>
         client.Enqueue<WelcomeEmailJob>(
-            JobQueues.Emails,
+            JobQueues.Critical,
             job => job.ExecuteAsync(userId.Value, CancellationToken.None)
         );
 }

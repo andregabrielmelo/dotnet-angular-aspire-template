@@ -86,15 +86,18 @@ Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `h
 - **Fire-and-forget jobs** (`Jobs/FireAndForget/`) are thin adapters: primitive arguments, a Mediator dispatch, and a throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire.
 - **Idempotency:** Hangfire runs every job at least once, so jobs must be safe to repeat. Nothing request-scoped (such as `ICurrentUser`) is available in jobs.
 - **Current jobs:**
-  - `WelcomeEmailJob`: enqueued when `/users/me` provisions a user; `emails` queue; guarded by `User.WelcomeEmailSentAtUtc`.
+  - `WelcomeEmailJob`: enqueued when `/users/me` provisions a user; `critical` queue; guarded by `User.WelcomeEmailSentAtUtc`.
   - `SyncUserProfilesJob`: hourly; copies names and emails from Keycloak.
-- **Management:** `IJobManagementService` backs the `/admin/jobs` endpoints (`jobs:read`, and `jobs:manage` for trigger, pause, resume, remove and restore) and the Angular `/jobs` pages. Pause state lives only in the `hangfire.paused_jobs` table, and a paused job is scheduled with `Cron.Never()`. Avoid static state; ADR 013 explains the deviations from netrock.
-- **Options:** `JobScheduling:Enabled` (false means no Hangfire and background work is skipped), `RunServer` and `WorkerCount`.
+  - `EnqueueMissedWelcomeEmailsJob`: hourly; re-enqueues welcome emails whose enqueue was lost (users 2 hours to 7 days old, by `User.CreatedAtUtc`, still unsent).
+- **Queues:** Hangfire.PostgreSql fetches queues alphabetically, so the name sets the priority. `critical` sorts before `default`.
+- **Management:** `IJobManagementService` backs the `/admin/jobs` endpoints (`jobs:read`, and `jobs:manage` for trigger, pause, resume, remove and restore) and the Angular `/jobs` pages. Pause state is a set in Hangfire's storage (`PausedRecurringJobs`), and the schedule is never changed. `[SkipWhenPaused]` on `RecurringJobRunner` is a client filter that cancels runs created from a paused recurring job. Trigger still works while paused because it enqueues the run directly. Avoid static state; ADR 013 explains the deviations from netrock.
+- **Options:** `JobScheduling:RunServer`, `WorkerCount` and `PrepareSchema` (whether startup creates Hangfire's tables).
 - **Dashboard:** `/hangfire`, Development only, local requests only.
 - **Tests:**
   - functional tests use in-memory storage per host with `JobScheduling:RunServer=false`, a no-op Hangfire `ILogProvider` (Hangfire's logging is static global state), and `FakeEmailSender`
   - `TestRecurringJobDefinition` (`test-recurring-job`) is the job tests pause, trigger and remove, so they never touch real jobs
   - `JobManagementServiceTests` starts a short-lived `BackgroundJobServer` for the trigger-to-history round trip
+  - `SkipWhenPausedAttributeTests` checks the pause filter against real Hangfire client code
 
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 

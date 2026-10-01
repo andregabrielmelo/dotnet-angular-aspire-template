@@ -22,6 +22,9 @@ public class User(string externalId, UserName name, EmailAddress email)
     /// </summary>
     public DateTimeOffset? WelcomeEmailSentAtUtc { get; private set; }
 
+    /// <summary>When the row was inserted; set by the database, so it's only known once saved.</summary>
+    public DateTimeOffset CreatedAtUtc { get; private set; }
+
     public static User Create(string externalId, UserName name, EmailAddress email)
     {
         if (string.IsNullOrWhiteSpace(externalId))

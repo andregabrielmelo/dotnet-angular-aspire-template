@@ -17,7 +17,7 @@ public class ResumeJobEndpoint(IJobManagementService _jobs)
         {
             s.Summary = "Resume a recurring job";
             s.Description =
-                "Restores the job's schedule. Resuming a job that isn't paused is a no-op.";
+                "Scheduled runs happen again. Resuming a job that isn't paused is a no-op.";
             s.Responses[204] = "Resumed";
             s.Responses[400] = "Invalid job id";
             s.Responses[403] = $"Requires the {Permission.JobsManage} permission";

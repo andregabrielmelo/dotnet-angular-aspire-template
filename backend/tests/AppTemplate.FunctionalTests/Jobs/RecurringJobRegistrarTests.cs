@@ -1,6 +1,4 @@
-using AppTemplate.Infrastructure.Data;
-using AppTemplate.Infrastructure.Jobs;
-using AppTemplate.Infrastructure.Jobs.Models;
+﻿using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.Infrastructure.Jobs.Services;
 using Hangfire;
 using Hangfire.Storage;
@@ -26,46 +24,40 @@ public class RecurringJobRegistrarTests(AppTemplateWebApplicationFactory factory
             .RegisterAllAsync(CancellationToken.None);
     }
 
-    private async Task SetPausedAsync(bool paused)
+    private void SetPaused(string jobId, bool paused)
     {
-        await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDatabaseContext>();
-        db.PausedJobs.RemoveRange(
-            db.PausedJobs.Where(p => p.JobId == TestRecurringJobDefinition.Id)
-        );
-        await db.SaveChangesAsync();
+        using var connection = factory.Services.GetRequiredService<JobStorage>().GetConnection();
         if (paused)
         {
-            db.PausedJobs.Add(
-                new PausedJob
-                {
-                    Id = Guid.NewGuid(),
-                    JobId = TestRecurringJobDefinition.Id,
-                    OriginalCron = Cron.Daily(),
-                    PausedAtUtc = DateTimeOffset.UtcNow,
-                }
-            );
-            await db.SaveChangesAsync();
+            PausedRecurringJobs.Pause(connection, jobId);
+        }
+        else
+        {
+            PausedRecurringJobs.Resume(connection, jobId);
         }
     }
 
+    private bool IsPaused(string jobId)
+    {
+        using var connection = factory.Services.GetRequiredService<JobStorage>().GetConnection();
+        return PausedRecurringJobs.IsPaused(connection, jobId);
+    }
+
     [Fact]
-    public async Task RegisterAll_KeepsPausedJobsOnANeverFiringSchedule_UntilTheyAreUnpaused()
+    public async Task RegisterAll_KeepsPausedJobsPaused_OnTheirRealSchedule()
     {
         try
         {
             // Like an application restart while the job is paused.
-            await SetPausedAsync(true);
+            SetPaused(TestRecurringJobDefinition.Id, true);
             await RegisterAllAsync();
-            Assert.Equal(Cron.Never(), ScheduledCron(TestRecurringJobDefinition.Id));
 
-            await SetPausedAsync(false);
-            await RegisterAllAsync();
             Assert.Equal(Cron.Daily(), ScheduledCron(TestRecurringJobDefinition.Id));
+            Assert.True(IsPaused(TestRecurringJobDefinition.Id));
         }
         finally
         {
-            await SetPausedAsync(false);
+            SetPaused(TestRecurringJobDefinition.Id, false);
         }
     }
 
@@ -87,13 +79,6 @@ public class RecurringJobRegistrarTests(AppTemplateWebApplicationFactory factory
         return connection.GetRecurringJobs().Any(j => j.Id == jobId);
     }
 
-    private async Task<bool> HasPauseRowAsync(string jobId)
-    {
-        await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDatabaseContext>();
-        return db.PausedJobs.Any(p => p.JobId == jobId);
-    }
-
     [Fact]
     public async Task RegisterAll_RemovesRunnerJobsWhoseDefinitionNoLongerExists()
     {
@@ -106,25 +91,12 @@ public class RecurringJobRegistrarTests(AppTemplateWebApplicationFactory factory
             runner => runner.ExecuteAsync(orphan, CancellationToken.None),
             Cron.Daily()
         );
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDatabaseContext>();
-            db.PausedJobs.Add(
-                new PausedJob
-                {
-                    Id = Guid.NewGuid(),
-                    JobId = orphan,
-                    OriginalCron = Cron.Daily(),
-                    PausedAtUtc = DateTimeOffset.UtcNow,
-                }
-            );
-            await db.SaveChangesAsync();
-        }
+        SetPaused(orphan, true);
 
         await RegisterAllAsync();
 
         Assert.False(IsScheduled(orphan));
-        Assert.False(await HasPauseRowAsync(orphan));
+        Assert.False(IsPaused(orphan));
         Assert.True(IsScheduled(TestRecurringJobDefinition.Id));
     }
 

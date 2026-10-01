@@ -1,6 +1,4 @@
-﻿using AppTemplate.Infrastructure.Data;
-using AppTemplate.Infrastructure.Jobs.Models;
-using AppTemplate.UseCases.Jobs;
+﻿using AppTemplate.UseCases.Jobs;
 using Ardalis.Result;
 using Hangfire;
 using Hangfire.Storage;
@@ -10,156 +8,120 @@ using StoredRecurringJob = Hangfire.Storage.RecurringJobDto;
 namespace AppTemplate.Infrastructure.Jobs.Services;
 
 /// <summary>
-/// <see cref="IJobManagementService"/> on Hangfire. Storage and the recurring job manager come
-/// from DI (never Hangfire's static APIs), and pause state lives only in the
-/// <c>paused_jobs</c> table, so every API instance sees the same state.
+/// <see cref="IJobManagementService"/> on Hangfire. Storage, the recurring job manager and the
+/// client come from DI (never Hangfire's static APIs). Pause state is a set in Hangfire storage
+/// (<see cref="PausedRecurringJobs"/>), so every API instance sees the same state, and pausing
+/// never changes a job's schedule.
 /// </summary>
 public sealed partial class JobManagementService(
     JobStorage jobStorage,
     IRecurringJobManager jobManager,
+    IBackgroundJobClient jobClient,
     RecurringJobRegistrar registrar,
-    IEnumerable<IRecurringJobDefinition> definitions,
-    ApplicationDatabaseContext dbContext,
-    TimeProvider timeProvider,
     ILogger<JobManagementService> logger
 ) : IJobManagementService
 {
     /// <summary>How many recent runs the detail view shows.</summary>
     public const int HistoryLength = 10;
 
-    public async Task<IReadOnlyList<RecurringJobDto>> GetRecurringJobsAsync(
+    public Task<IReadOnlyList<RecurringJobDto>> GetRecurringJobsAsync(
         CancellationToken cancellationToken
     )
     {
-        var paused = await GetPausedCronsAsync(cancellationToken);
-        return GetScheduledJobs()
+        using var connection = jobStorage.GetConnection();
+        var paused = PausedRecurringJobs.GetAll(connection);
+        IReadOnlyList<RecurringJobDto> jobs = connection
+            .GetRecurringJobs()
             .OrderBy(job => job.Id, StringComparer.Ordinal)
             .Select(job => ToDto(job, paused))
             .ToList();
+        return Task.FromResult(jobs);
     }
 
-    public async Task<Result<RecurringJobDetailDto>> GetRecurringJobAsync(
+    public Task<Result<RecurringJobDetailDto>> GetRecurringJobAsync(
         string jobId,
         CancellationToken cancellationToken
     )
     {
-        var job = FindScheduledJob(jobId);
+        using var connection = jobStorage.GetConnection();
+        var job = FindScheduledJob(connection, jobId);
         if (job is null)
         {
-            return Result.NotFound();
+            return Task.FromResult<Result<RecurringJobDetailDto>>(Result.NotFound());
         }
 
-        var paused = await GetPausedCronsAsync(cancellationToken);
-        return new RecurringJobDetailDto(ToDto(job, paused), GetRecentExecutions(jobId));
+        var detail = new RecurringJobDetailDto(
+            ToDto(job, PausedRecurringJobs.GetAll(connection)),
+            GetRecentExecutions(jobId)
+        );
+        return Task.FromResult<Result<RecurringJobDetailDto>>(detail);
     }
 
     public Task<Result> TriggerAsync(string jobId, CancellationToken cancellationToken)
     {
-        if (FindScheduledJob(jobId) is null)
+        using var connection = jobStorage.GetConnection();
+        if (FindScheduledJob(connection, jobId) is null)
         {
             return Task.FromResult(Result.NotFound());
         }
 
-        jobManager.Trigger(jobId);
+        if (PausedRecurringJobs.IsPaused(connection, jobId))
+        {
+            // Hangfire's own trigger creates the run from the recurring job, which the pause
+            // filter would cancel. A run enqueued directly isn't tied to the recurring job, so an
+            // admin can still run a paused job once on purpose.
+            jobClient.Enqueue<RecurringJobRunner>(
+                JobQueues.Default,
+                runner => runner.ExecuteAsync(jobId, CancellationToken.None)
+            );
+        }
+        else
+        {
+            jobManager.Trigger(jobId);
+        }
+
         LogTriggered(logger, jobId);
         return Task.FromResult(Result.Success());
     }
 
-    public async Task<Result> PauseAsync(string jobId, CancellationToken cancellationToken)
+    public Task<Result> PauseAsync(string jobId, CancellationToken cancellationToken)
     {
-        var job = FindScheduledJob(jobId);
-        if (job is null)
+        using var connection = jobStorage.GetConnection();
+        if (FindScheduledJob(connection, jobId) is null)
         {
-            return Result.NotFound();
+            return Task.FromResult(Result.NotFound());
         }
 
-        if (await dbContext.PausedJobs.AnyAsync(p => p.JobId == jobId, cancellationToken))
-        {
-            return Result.Success();
-        }
-
-        // Remember the definition's schedule when there is one - the stored cron may already be
-        // Never (e.g. paused by an older instance whose row was removed by hand).
-        var originalCron = FindDefinition(jobId)?.CronExpression ?? job.Cron;
-        var pausedJob = new PausedJob
-        {
-            Id = Guid.NewGuid(),
-            JobId = jobId,
-            OriginalCron = originalCron,
-            PausedAtUtc = timeProvider.GetUtcNow(),
-        };
-        dbContext.PausedJobs.Add(pausedJob);
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Another request paused the same job between our check and our insert (the unique
-            // index on job_id rejected ours). It also scheduled Cron.Never(), so we're done.
-            // Anything else is a real database error and propagates.
-            dbContext.Entry(pausedJob).State = EntityState.Detached;
-            if (!await dbContext.PausedJobs.AnyAsync(p => p.JobId == jobId, cancellationToken))
-            {
-                throw;
-            }
-
-            LogLostRace(logger, "pause", jobId);
-            return Result.Success();
-        }
-
-        registrar.Schedule(jobId, Cron.Never());
-        LogPaused(logger, jobId, originalCron);
-        return Result.Success();
+        PausedRecurringJobs.Pause(connection, jobId);
+        LogPaused(logger, jobId);
+        return Task.FromResult(Result.Success());
     }
 
-    public async Task<Result> ResumeAsync(string jobId, CancellationToken cancellationToken)
+    public Task<Result> ResumeAsync(string jobId, CancellationToken cancellationToken)
     {
-        if (FindScheduledJob(jobId) is null)
+        using var connection = jobStorage.GetConnection();
+        if (FindScheduledJob(connection, jobId) is null)
         {
-            return Result.NotFound();
+            return Task.FromResult(Result.NotFound());
         }
 
-        var pausedJob = await dbContext.PausedJobs.FirstOrDefaultAsync(
-            p => p.JobId == jobId,
-            cancellationToken
-        );
-        if (pausedJob is null)
-        {
-            return Result.Success();
-        }
-
-        dbContext.PausedJobs.Remove(pausedJob);
-        await SaveDeletionAsync(pausedJob, "resume", jobId, cancellationToken);
-
-        // The definition wins, so a schedule changed in code since the pause takes effect.
-        var cron = FindDefinition(jobId)?.CronExpression ?? pausedJob.OriginalCron;
-        registrar.Schedule(jobId, cron);
-        LogResumed(logger, jobId, cron);
-        return Result.Success();
+        PausedRecurringJobs.Resume(connection, jobId);
+        LogResumed(logger, jobId);
+        return Task.FromResult(Result.Success());
     }
 
-    public async Task<Result> RemoveAsync(string jobId, CancellationToken cancellationToken)
+    public Task<Result> RemoveAsync(string jobId, CancellationToken cancellationToken)
     {
-        if (FindScheduledJob(jobId) is null)
+        using var connection = jobStorage.GetConnection();
+        if (FindScheduledJob(connection, jobId) is null)
         {
-            return Result.NotFound();
+            return Task.FromResult(Result.NotFound());
         }
 
         jobManager.RemoveIfExists(jobId);
-
-        var pausedJob = await dbContext.PausedJobs.FirstOrDefaultAsync(
-            p => p.JobId == jobId,
-            cancellationToken
-        );
-        if (pausedJob is not null)
-        {
-            dbContext.PausedJobs.Remove(pausedJob);
-            await SaveDeletionAsync(pausedJob, "remove", jobId, cancellationToken);
-        }
-
+        PausedRecurringJobs.Resume(connection, jobId);
         LogRemoved(logger, jobId);
-        return Result.Success();
+        return Task.FromResult(Result.Success());
     }
 
     public async Task<Result> RestoreAsync(CancellationToken cancellationToken)
@@ -168,56 +130,18 @@ public sealed partial class JobManagementService(
         return Result.Success();
     }
 
-    /// <summary>
-    /// Saves the deletion of a <see cref="PausedJob"/> row. If a concurrent request already
-    /// deleted it, the outcome is the same, so that isn't an error.
-    /// </summary>
-    private async Task SaveDeletionAsync(
-        PausedJob pausedJob,
-        string operation,
-        string jobId,
-        CancellationToken cancellationToken
-    )
+    /// <summary>Hangfire reports an unknown id as a job with <c>Removed</c> set.</summary>
+    private static StoredRecurringJob? FindScheduledJob(
+        IStorageConnection connection,
+        string jobId
+    ) => connection.GetRecurringJobs([jobId]).FirstOrDefault(job => !job.Removed);
+
+    private static RecurringJobDto ToDto(StoredRecurringJob job, IReadOnlySet<string> paused)
     {
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            dbContext.Entry(pausedJob).State = EntityState.Detached;
-            LogLostRace(logger, operation, jobId);
-        }
-    }
-
-    private IRecurringJobDefinition? FindDefinition(string jobId) =>
-        definitions.FirstOrDefault(d => d.JobId == jobId);
-
-    private List<StoredRecurringJob> GetScheduledJobs()
-    {
-        using var connection = jobStorage.GetConnection();
-        return connection.GetRecurringJobs();
-    }
-
-    private StoredRecurringJob? FindScheduledJob(string jobId) =>
-        GetScheduledJobs().FirstOrDefault(job => job.Id == jobId);
-
-    private async Task<Dictionary<string, string>> GetPausedCronsAsync(
-        CancellationToken cancellationToken
-    ) =>
-        await dbContext
-            .PausedJobs.AsNoTracking()
-            .ToDictionaryAsync(p => p.JobId, p => p.OriginalCron, cancellationToken);
-
-    private static RecurringJobDto ToDto(
-        StoredRecurringJob job,
-        IReadOnlyDictionary<string, string> pausedCrons
-    )
-    {
-        var isPaused = pausedCrons.TryGetValue(job.Id, out var originalCron);
+        var isPaused = paused.Contains(job.Id);
         return new RecurringJobDto(
             job.Id,
-            isPaused ? originalCron! : job.Cron,
+            job.Cron,
             isPaused ? null : Utc(job.NextExecution),
             Utc(job.LastExecution),
             job.LastJobState,
@@ -277,23 +201,11 @@ public sealed partial class JobManagementService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Triggered recurring job '{JobId}'")]
     private static partial void LogTriggered(ILogger logger, string jobId);
 
-    [LoggerMessage(
-        Level = LogLevel.Information,
-        Message = "Paused recurring job '{JobId}' (was {Cron})"
-    )]
-    private static partial void LogPaused(ILogger logger, string jobId, string cron);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Paused recurring job '{JobId}'")]
+    private static partial void LogPaused(ILogger logger, string jobId);
 
-    [LoggerMessage(
-        Level = LogLevel.Information,
-        Message = "Resumed recurring job '{JobId}' ({Cron})"
-    )]
-    private static partial void LogResumed(ILogger logger, string jobId, string cron);
-
-    [LoggerMessage(
-        Level = LogLevel.Debug,
-        Message = "Concurrent {Operation} of recurring job '{JobId}' already applied; treating as success"
-    )]
-    private static partial void LogLostRace(ILogger logger, string operation, string jobId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Resumed recurring job '{JobId}'")]
+    private static partial void LogResumed(ILogger logger, string jobId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Removed recurring job '{JobId}'")]
     private static partial void LogRemoved(ILogger logger, string jobId);

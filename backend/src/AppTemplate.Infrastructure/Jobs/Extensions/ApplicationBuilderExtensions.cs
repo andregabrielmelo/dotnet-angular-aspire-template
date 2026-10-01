@@ -4,7 +4,6 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Infrastructure.Jobs.Extensions;
 
@@ -25,13 +24,6 @@ public static class ApplicationBuilderExtensions
         CancellationToken cancellationToken = default
     )
     {
-        var options = app.Services.GetRequiredService<IOptions<JobSchedulingOptions>>().Value;
-        if (!options.Enabled)
-        {
-            app.Logger.LogInformation("Job scheduling is disabled by configuration");
-            return app;
-        }
-
         if (app.Environment.IsDevelopment())
         {
             app.MapHangfireDashboard(

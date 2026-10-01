@@ -1,8 +1,8 @@
 ﻿namespace AppTemplate.UseCases.Jobs;
 
 /// <param name="Id">The stable recurring job id (e.g. "sync-user-profiles").</param>
-/// <param name="Cron">The job's own schedule - also while paused, when Hangfire's schedule never fires.</param>
-/// <param name="NextExecution">Null while paused.</param>
+/// <param name="Cron">The job's schedule, unchanged while paused.</param>
+/// <param name="NextExecution">Null while paused, since scheduled runs are skipped.</param>
 /// <param name="LastStatus">Hangfire state of the last run, e.g. "Succeeded" or "Failed".</param>
 public sealed record RecurringJobDto(
     string Id,

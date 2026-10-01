@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AppTemplate.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDatabaseContext))]
-    [Migration("20260925000441_AddPausedJobs")]
-    partial class AddPausedJobs
+    [Migration("20260930235612_AddUserCreatedAt")]
+    partial class AddUserCreatedAt
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -30,6 +30,12 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("integer")
                         .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -65,39 +71,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_users_external_id");
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("AppTemplate.Infrastructure.Jobs.Models.PausedJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("JobId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("job_id");
-
-                    b.Property<string>("OriginalCron")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("original_cron");
-
-                    b.Property<DateTimeOffset>("PausedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("paused_at_utc");
-
-                    b.HasKey("Id")
-                        .HasName("pk_paused_jobs");
-
-                    b.HasIndex("JobId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_paused_jobs_job_id");
-
-                    b.ToTable("paused_jobs", "hangfire");
                 });
 
             modelBuilder.Entity("AppTemplate.Core.Aggregates.UserAggregate.User", b =>

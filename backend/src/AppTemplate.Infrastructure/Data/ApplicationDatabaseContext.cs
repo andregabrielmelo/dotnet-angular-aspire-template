@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.Infrastructure.Jobs.Models;
 
 namespace AppTemplate.Infrastructure.Data;
 
@@ -8,8 +7,6 @@ public class ApplicationDatabaseContext(DbContextOptions<ApplicationDatabaseCont
     : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
-
-    public DbSet<PausedJob> PausedJobs => Set<PausedJob>();
 
     // Override OnModelCreating to apply class configurations from the assembly
     protected override void OnModelCreating(ModelBuilder modelBuilder)

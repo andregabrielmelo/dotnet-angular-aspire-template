@@ -1,12 +1,10 @@
-using AppTemplate.Infrastructure.Data;
-using AppTemplate.Infrastructure.Jobs;
+﻿using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.UseCases.Jobs;
 using Ardalis.Result;
 using Hangfire;
 using Hangfire.AspNetCore;
 using Hangfire.Storage;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using RecurringJobDto = AppTemplate.UseCases.Jobs.RecurringJobDto;
@@ -50,13 +48,22 @@ public class JobManagementServiceTests
         return connection.GetRecurringJobs().Single(j => j.Id == jobId).Cron;
     }
 
-    private async Task<int> PausedRows()
+    private bool IsPausedInStorage()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
-        return await scope
-            .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
-            .PausedJobs.CountAsync(p => p.JobId == JobId);
+        using var connection = Storage.GetConnection();
+        return PausedRecurringJobs.IsPaused(connection, JobId);
     }
+
+    private IEnumerable<
+        KeyValuePair<string, Hangfire.Storage.Monitoring.EnqueuedJobDto>
+    > EnqueuedRuns() =>
+        Storage
+            .GetMonitoringApi()
+            .EnqueuedJobs(JobQueues.Default, 0, 1000)
+            .Where(e =>
+                e.Value.Job.Type == typeof(RecurringJobRunner)
+                && (string)e.Value.Job.Args[0] == JobId
+            );
 
     private async Task<RecurringJobDto> GetJob() =>
         (await _service.GetRecurringJobsAsync(CancellationToken.None)).Single(j => j.Id == JobId);
@@ -73,17 +80,17 @@ public class JobManagementServiceTests
     }
 
     [Fact]
-    public async Task Pause_StopsTheScheduleButKeepsShowingTheOriginalOne()
+    public async Task Pause_MarksTheJobPaused_WithoutChangingItsSchedule()
     {
         var result = await _service.PauseAsync(JobId, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(Cron.Never(), StoredCron(JobId));
+        Assert.Equal(Cron.Daily(), StoredCron(JobId));
         var job = await GetJob();
         Assert.True(job.IsPaused);
         Assert.Equal(Cron.Daily(), job.Cron);
         Assert.Null(job.NextExecution);
-        Assert.Equal(1, await PausedRows());
+        Assert.True(IsPausedInStorage());
     }
 
     [Fact]
@@ -94,11 +101,11 @@ public class JobManagementServiceTests
         var second = await _service.PauseAsync(JobId, CancellationToken.None);
 
         Assert.True(second.IsSuccess);
-        Assert.Equal(1, await PausedRows());
+        Assert.True(IsPausedInStorage());
     }
 
     [Fact]
-    public async Task Resume_RestoresTheSchedule()
+    public async Task Resume_UnmarksTheJob()
     {
         await _service.PauseAsync(JobId, CancellationToken.None);
 
@@ -106,8 +113,10 @@ public class JobManagementServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(Cron.Daily(), StoredCron(JobId));
-        Assert.False((await GetJob()).IsPaused);
-        Assert.Equal(0, await PausedRows());
+        var job = await GetJob();
+        Assert.False(job.IsPaused);
+        Assert.NotNull(job.NextExecution);
+        Assert.False(IsPausedInStorage());
     }
 
     [Fact]
@@ -122,16 +131,25 @@ public class JobManagementServiceTests
     [Fact]
     public async Task Trigger_EnqueuesARunOfThatJobOnly()
     {
+        var before = EnqueuedRuns().Count();
+
         var result = await _service.TriggerAsync(JobId, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        var enqueued = Storage.GetMonitoringApi().EnqueuedJobs(JobQueues.Default, 0, 1000);
-        Assert.Contains(
-            enqueued,
-            e =>
-                e.Value.Job.Type == typeof(RecurringJobRunner)
-                && (string)e.Value.Job.Args[0] == JobId
-        );
+        Assert.Equal(before + 1, EnqueuedRuns().Count());
+    }
+
+    [Fact]
+    public async Task Trigger_WhilePaused_StillEnqueuesARun()
+    {
+        await _service.PauseAsync(JobId, CancellationToken.None);
+        var before = EnqueuedRuns().Count();
+
+        var result = await _service.TriggerAsync(JobId, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(before + 1, EnqueuedRuns().Count());
+        Assert.True((await GetJob()).IsPaused);
     }
 
     [Fact]
@@ -144,7 +162,7 @@ public class JobManagementServiceTests
             await _service.GetRecurringJobsAsync(CancellationToken.None),
             j => j.Id == JobId
         );
-        Assert.Equal(0, await PausedRows()); // removing also forgets the pause
+        Assert.False(IsPausedInStorage()); // removing also forgets the pause
 
         Assert.True((await _service.RestoreAsync(CancellationToken.None)).IsSuccess);
         Assert.Equal(Cron.Daily(), StoredCron(JobId));
@@ -159,7 +177,7 @@ public class JobManagementServiceTests
 
         await _service.RestoreAsync(CancellationToken.None);
 
-        Assert.Equal(Cron.Never(), StoredCron(JobId));
+        Assert.Equal(Cron.Daily(), StoredCron(JobId));
         Assert.True((await GetJob()).IsPaused);
     }
 

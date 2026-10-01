@@ -40,16 +40,19 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(JobSchedulingOptions.SectionName).Get<JobSchedulingOptions>()
             ?? new JobSchedulingOptions();
 
-        if (!options.Enabled)
-        {
-            services.AddScoped<IBackgroundJobScheduler, DisabledBackgroundJobScheduler>();
-            services.AddScoped<IJobManagementService, DisabledJobManagementService>();
-            return services;
-        }
-
+        // Registered directly rather than with UsePostgreSqlStorage(), which also sets the static
+        // JobStorage.Current - process-wide state this project avoids.
         services.AddSingleton<JobStorage>(_ =>
         {
-            var storageOptions = new PostgreSqlStorageOptions { PrepareSchemaIfNecessary = true };
+            var storageOptions = new PostgreSqlStorageOptions
+            {
+                SchemaName = "hangfire",
+                PrepareSchemaIfNecessary = options.PrepareSchema,
+                // Postgres can still be starting when the API starts: retry the first connection
+                // with back-off, then fail rather than run without storage.
+                StartupConnectionMaxRetries = 5,
+                AllowDegradedModeWithoutStorage = false,
+            };
             return new PostgreSqlStorage(
                 new NpgsqlConnectionFactory(connectionString, storageOptions),
                 storageOptions
@@ -92,6 +95,7 @@ public static class ServiceCollectionExtensions
 
         // Recurring jobs - add new ones here.
         services.AddRecurringJob<SyncUserProfilesJob>();
+        services.AddRecurringJob<EnqueueMissedWelcomeEmailsJob>();
 
         // Fire-and-forget jobs - Hangfire resolves them from DI when they run.
         services.AddScoped<WelcomeEmailJob>();

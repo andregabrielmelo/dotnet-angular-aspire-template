@@ -23,10 +23,10 @@ public interface IJobManagementService
     /// <summary>Runs the job now, without changing its schedule. Works while paused too.</summary>
     Task<Result> TriggerAsync(string jobId, CancellationToken cancellationToken);
 
-    /// <summary>Stops the schedule until resumed; survives restarts. Pausing twice is a no-op.</summary>
+    /// <summary>Skips scheduled runs until resumed; survives restarts. Pausing twice is a no-op.</summary>
     Task<Result> PauseAsync(string jobId, CancellationToken cancellationToken);
 
-    /// <summary>Restores the job's schedule. Resuming a job that isn't paused is a no-op.</summary>
+    /// <summary>Scheduled runs happen again. Resuming a job that isn't paused is a no-op.</summary>
     Task<Result> ResumeAsync(string jobId, CancellationToken cancellationToken);
 
     /// <summary>
