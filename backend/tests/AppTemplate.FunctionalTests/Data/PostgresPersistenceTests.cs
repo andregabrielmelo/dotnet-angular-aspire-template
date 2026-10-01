@@ -166,7 +166,7 @@ public class PostgresPersistenceTests(AppTemplateWebApplicationFactory factory)
         );
         Assert.Equal(1, rows);
 
-        // Only the request that actually inserted the user enqueued its welcome email.
+        // Only the request that actually inserted raised UserCreatedEvent.
         var welcomeEmails = factory
             .Services.GetRequiredService<JobStorage>()
             .GetMonitoringApi()

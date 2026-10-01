@@ -1,7 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Users.ProvisionCurrent;
 using Ardalis.Result;
 using NSubstitute;
@@ -13,7 +12,6 @@ public class ProvisionCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
-    private readonly IBackgroundJobScheduler _jobs = Substitute.For<IBackgroundJobScheduler>();
 
     private static readonly ProvisionCurrentUserCommand Command = new(
         "keycloak-sub-1",
@@ -21,8 +19,7 @@ public class ProvisionCurrentUserHandlerTests
         new EmailAddress("ada@example.com")
     );
 
-    private ProvisionCurrentUserHandler CreateHandler() =>
-        new(_repository, _cacheInvalidator, _jobs);
+    private ProvisionCurrentUserHandler CreateHandler() => new(_repository, _cacheInvalidator);
 
     private static User StoredUser()
     {
@@ -60,10 +57,6 @@ public class ProvisionCurrentUserHandlerTests
         await _cacheInvalidator
             .Received(1)
             .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
-        Assert.Single(
-            _jobs.ReceivedCalls(),
-            call => call.GetMethodInfo().Name == nameof(IBackgroundJobScheduler.EnqueueWelcomeEmail)
-        );
     }
 
     [Fact]
@@ -77,7 +70,6 @@ public class ProvisionCurrentUserHandlerTests
         Assert.False(result.Value.Created);
         Assert.Equal(Command.Name, result.Value.User.Name);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        Assert.Empty(_jobs.ReceivedCalls());
     }
 
     [Fact]
@@ -130,7 +122,6 @@ public class ProvisionCurrentUserHandlerTests
         await _cacheInvalidator
             .Received(1)
             .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
-        Assert.Empty(_jobs.ReceivedCalls()); // the winner enqueued it
     }
 
     [Fact]

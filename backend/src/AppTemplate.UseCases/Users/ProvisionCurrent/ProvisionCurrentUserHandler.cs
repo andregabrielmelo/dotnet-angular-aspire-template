@@ -2,7 +2,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Jobs;
 
 namespace AppTemplate.UseCases.Users.ProvisionCurrent;
 
@@ -21,8 +20,7 @@ public record ProvisionCurrentUserCommand(string ExternalId, UserName Name, Emai
 
 public class ProvisionCurrentUserHandler(
     IRepository<User> _repository,
-    ICacheInvalidator _cacheInvalidator,
-    IBackgroundJobScheduler _jobs
+    ICacheInvalidator _cacheInvalidator
 ) : ICommandHandler<ProvisionCurrentUserCommand, Result<ProvisionCurrentUserResult>>
 {
     public async ValueTask<Result<ProvisionCurrentUserResult>> Handle(
@@ -52,6 +50,7 @@ public class ProvisionCurrentUserHandler(
         User createdUser;
         try
         {
+            // Saving raises UserCreatedEvent, which schedules the welcome email.
             createdUser = await _repository.AddAsync(
                 User.Create(command.ExternalId, command.Name, command.Email),
                 cancellationToken
@@ -66,10 +65,6 @@ public class ProvisionCurrentUserHandler(
 
         // Drops the cached "no such user" for this identity, and user lists that lack it.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
-
-        // Only the request that actually created the user gets here, so a lost race never
-        // enqueues a second email. Sending is slow and can fail - never make sign-in wait on it.
-        _jobs.EnqueueWelcomeEmail(createdUser.Id);
 
         return new ProvisionCurrentUserResult(CurrentUserDto.FromEntity(createdUser), true);
     }

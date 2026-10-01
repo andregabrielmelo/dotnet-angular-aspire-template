@@ -25,14 +25,19 @@ public class SeedData
 
         // Seed users are fixtures for pagination demos, not accounts anyone can log into - their
         // ExternalIds don't match any identity in Keycloak.
-        var users = names.Select(
-            (name, index) =>
-                User.Create(
-                    $"seed-{index + 1}",
-                    UserName.From(name),
-                    new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
-                )
-        );
+        var users = names
+            .Select(
+                (name, index) =>
+                    User.Create(
+                        $"seed-{index + 1}",
+                        UserName.From(name),
+                        new EmailAddress($"{name.ToLowerInvariant().Replace(" ", "")}@example.com")
+                    )
+            )
+            .ToList();
+        // Fixtures aren't sign-ups: drop UserCreatedEvent so seeding doesn't enqueue welcome
+        // emails (it also runs before Hangfire is set up).
+        users.ForEach(user => user.ClearDomainEvents());
         dbContext.Users.AddRange(users);
         await dbContext.SaveChangesAsync();
     }
