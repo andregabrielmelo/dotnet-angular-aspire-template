@@ -1,12 +1,13 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.ValueObjects;
+using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Update;
 
 public record UpdateUserCommand(UserId UserId, UserName UserName, string? PhoneNumber)
     : Mediator.ICommand<Result<UserDto>>;
 
-public class UpdateUserHandler(IRepository<User> _repository)
+public class UpdateUserHandler(IRepository<User> _repository, ICache _cache)
     : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     public async ValueTask<Result<UserDto>> Handle(
@@ -26,6 +27,7 @@ public class UpdateUserHandler(IRepository<User> _repository)
         }
 
         await _repository.UpdateAsync(user, cancellationToken);
+        await _cache.RemoveAsync(UserCacheKeys.ById(user.Id), cancellationToken);
 
         var dto = new UserDto(user.Id, user.Name, user.PhoneNumber);
         return Result<UserDto>.Success(dto);

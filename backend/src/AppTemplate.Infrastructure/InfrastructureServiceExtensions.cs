@@ -1,4 +1,5 @@
-﻿using AppTemplate.Infrastructure.Data;
+﻿using AppTemplate.Infrastructure.Caching;
+using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -52,6 +53,8 @@ public static class InfrastructureServiceExtensions
         services
             .AddScoped(typeof(IRepository<>), typeof(EntityFrameworkRepository<>))
             .AddScoped<IListUsersQueryService, ListUsersQueryService>();
+
+        services.AddCaching(config, logger);
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

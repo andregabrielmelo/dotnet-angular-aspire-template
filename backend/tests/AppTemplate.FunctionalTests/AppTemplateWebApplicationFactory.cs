@@ -25,6 +25,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         // supply a placeholder so that guard passes; it's never actually connected to.
         builder.UseSetting("ConnectionStrings:apptemplate", "Host=unused;Database=unused");
 
+        // No Redis in tests: let HybridCache run L1-only (in-memory) instead of failing startup.
+        builder.UseSetting("Cache:AllowLocalOnly", "true");
+
         builder.ConfigureServices(services =>
         {
             // Removing just DbContextOptions<T> leaves EF Core's internal per-provider

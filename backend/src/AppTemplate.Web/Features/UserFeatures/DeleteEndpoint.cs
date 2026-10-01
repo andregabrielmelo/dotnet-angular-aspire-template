@@ -15,6 +15,7 @@ public class DeleteEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Delete("/users/{UserId}");
+        AllowAnonymous();
 
         Summary(s =>
         {
