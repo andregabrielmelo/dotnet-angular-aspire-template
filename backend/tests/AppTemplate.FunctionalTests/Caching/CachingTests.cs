@@ -17,6 +17,7 @@ namespace AppTemplate.FunctionalTests.Caching;
 /// Caching must never serve stale or unauthorized data: writes invalidate HybridCache and the
 /// output cache, and cached list responses are still gated by the users:read policy.
 /// </summary>
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class CachingTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
@@ -79,8 +80,7 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_IsOutputCachedForAuthorizedCallersAndEvictedByWrites()
     {
-        // ListUsersQueryService uses raw SQL (unsupported by EF InMemory, see ADR 006) - a
-        // counting stub also shows when the response came from the output cache.
+        // A counting stub shows when the response came from the output cache instead.
         var listQuery = new CountingListUsersQueryService();
         var app = factory.WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>

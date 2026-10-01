@@ -6,6 +6,7 @@ using Xunit;
 
 namespace AppTemplate.FunctionalTests.AuthenticationFeatures;
 
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
