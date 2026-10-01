@@ -35,6 +35,36 @@ describe('CurrentUserService', () => {
     expect(service.hasPermission(Permission.UsersDelete)).toBe(false);
   });
 
+  it('provisions the profile on first sign-in, when GET returns 404', () => {
+    service.load().subscribe();
+    httpMock.expectOne({ method: 'GET', url: 'api/users/me' }).flush(null, {
+      status: 404,
+      statusText: 'Not Found',
+    });
+    httpMock.expectOne({ method: 'POST', url: 'api/users/me' }).flush({
+      id: 2,
+      name: 'Grace',
+      email: 'grace@example.com',
+      permissions: [],
+    });
+
+    service.load().subscribe();
+    httpMock.expectNone('api/users/me');
+
+    expect(service.profile()?.name).toBe('Grace');
+  });
+
+  it('does not provision when GET fails for another reason', () => {
+    service.load().subscribe();
+    httpMock.expectOne({ method: 'GET', url: 'api/users/me' }).flush(null, {
+      status: 500,
+      statusText: 'Error',
+    });
+
+    httpMock.expectNone({ method: 'POST', url: 'api/users/me' });
+    expect(service.profile()).toBeNull();
+  });
+
   it('has no permissions when the profile cannot be loaded, and retries later', () => {
     service.load().subscribe();
     httpMock.expectOne('api/users/me').flush(null, { status: 500, statusText: 'Error' });
