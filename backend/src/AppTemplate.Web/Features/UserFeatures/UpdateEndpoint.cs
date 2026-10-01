@@ -26,6 +26,7 @@ public class UpdateEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Put("/users/{id}");
+        AllowAnonymous();
 
         Summary(s =>
         {
