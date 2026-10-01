@@ -35,4 +35,4 @@ Some reads happen far more often than the data changes. The SPA calls `GET /user
 - Never apply `AuthorizedSharedResponsePolicy` to an endpoint whose response depends on the caller (such as `/users/me`). Use HybridCache inside the use case instead, keyed by what the result depends on.
 - A new cached read needs a key, the right tag, and an invalidation call in every write that affects it. Forgetting the last step means stale data, so cover it with a functional test like `CachingTests`.
 - Without Redis (tests, or running the API alone) both layers are in-memory, which is correct for a single instance. With several instances, run Redis. Even then, another instance's L1 may serve an invalidated entry for up to one minute.
-- The list query uses raw SQL that EF InMemory can't run (ADR 006), so the output-cache test replaces it with a counting stub. That stub also shows whether a response came from the cache.
+- The output-cache test replaces the list query with a counting stub, which shows whether a response came from the cache.
