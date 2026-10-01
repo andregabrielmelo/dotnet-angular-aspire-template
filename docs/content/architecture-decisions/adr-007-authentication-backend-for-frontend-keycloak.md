@@ -29,7 +29,10 @@ Browser ──(cookie)──► AppTemplate.BackendForFrontend ──(Bearer JWT
   - It proxies `/api/**` to the Web API with YARP, adding the user's access token as a Bearer header. Duende.AccessTokenManagement (Apache-2.0) refreshes that token with the refresh token.
   - In Development it also proxies everything else to the Angular dev server. Outside Development it serves the built SPA from `wwwroot`.
 - **`AppTemplate.Web`** validates Keycloak JWTs (`AddKeycloakJwtBearer`, audience `apptemplate-api`). FastEndpoints endpoints require an authenticated user unless marked `AllowAnonymous()`.
-- **Just-in-time provisioning**: registration happens in Keycloak, so the domain `User` is created on the first authenticated call to `GET /users/me`. It is linked to the Keycloak identity by `User.ExternalId`, which holds the `sub` claim.
+- **Just-in-time provisioning**: registration happens in Keycloak, so the domain `User` is created the first time that identity signs in to the app. It is linked to the Keycloak identity by `User.ExternalId`, which holds the `sub` claim.
+  - `GET /users/me` only reads: it returns 404 for an identity that hasn't been provisioned. A GET that writes breaks HTTP semantics - caches, prefetchers and retries all assume GETs are safe.
+  - `POST /users/me` provisions from the access token's claims. It is idempotent (an existing profile comes back with 200 instead of 201), so the SPA simply calls it when the GET returns 404.
+  - It is safe under concurrency. Two first requests (two tabs, or a retry) can both see "no such user"; the unique indexes on `external_id` and `email` decide the winner. `EntityFrameworkRepository` turns Postgres' unique violation (`23505`) into `UniqueConstraintViolationException`, and the loser re-reads the row by `sub` and returns it, instead of failing with a 500. Only if the row belongs to a different identity (same email) is it a 409.
 
 ## Consequences
 - The browser never holds a token. The tokens are stored inside the encrypted cookie ticket, which the Data Protection keys protect and JavaScript cannot read. If the cookie grows too large, or tokens must be revocable server-side, add an `ITicketStore` backed by a distributed cache.
