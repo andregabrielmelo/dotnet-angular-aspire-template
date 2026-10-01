@@ -4,6 +4,7 @@ using Xunit;
 
 namespace AppTemplate.FunctionalTests.Jobs;
 
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class RecurringJobRunnerTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {

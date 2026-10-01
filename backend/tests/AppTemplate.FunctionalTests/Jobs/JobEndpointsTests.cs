@@ -6,6 +6,7 @@ using Xunit;
 
 namespace AppTemplate.FunctionalTests.Jobs;
 
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>,
         IAsyncLifetime

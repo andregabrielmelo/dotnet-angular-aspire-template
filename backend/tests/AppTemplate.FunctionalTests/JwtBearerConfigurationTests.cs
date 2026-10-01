@@ -9,6 +9,7 @@ namespace AppTemplate.FunctionalTests;
 /// The functional tests swap JWT validation for TestAuthHandler, so check the real JwtBearer
 /// setup separately: right audience, JWT claim names, and a configurable HTTPS authority.
 /// </summary>
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class JwtBearerConfigurationTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {

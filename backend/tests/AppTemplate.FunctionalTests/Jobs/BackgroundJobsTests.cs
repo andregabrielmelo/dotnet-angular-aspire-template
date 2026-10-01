@@ -12,6 +12,7 @@ using Xunit;
 
 namespace AppTemplate.FunctionalTests.Jobs;
 
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {

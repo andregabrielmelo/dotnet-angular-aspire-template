@@ -15,6 +15,7 @@ namespace AppTemplate.FunctionalTests.Jobs;
 /// Exercises JobManagementService against the test host's in-memory Hangfire storage and
 /// database. Tests only change the test recurring job, and each starts from a clean state.
 /// </summary>
+[Trait(TestCategories.Name, TestCategories.RequiresDocker)]
 public class JobManagementServiceTests
     : IClassFixture<AppTemplateWebApplicationFactory>,
         IAsyncLifetime
