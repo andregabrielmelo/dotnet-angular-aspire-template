@@ -28,7 +28,7 @@ public static class PhoneValidatorExtensions
 
 public sealed partial class PhoneCountryCodeValidator<T> : PropertyValidator<T, string?>
 {
-    public override string Name => nameof(PhoneCountryCodeValidator<T>);
+    public override string Name => nameof(PhoneCountryCodeValidator<>);
 
     public override bool IsValid(FluentValidation.ValidationContext<T> context, string? value) =>
         string.IsNullOrEmpty(value) || Pattern().IsMatch(value);
@@ -42,7 +42,7 @@ public sealed partial class PhoneCountryCodeValidator<T> : PropertyValidator<T, 
 
 public sealed partial class PhoneNumberValidator<T> : PropertyValidator<T, string?>
 {
-    public override string Name => nameof(PhoneNumberValidator<T>);
+    public override string Name => nameof(PhoneNumberValidator<>);
 
     public override bool IsValid(FluentValidation.ValidationContext<T> context, string? value) =>
         string.IsNullOrEmpty(value) || Pattern().IsMatch(value);
@@ -56,7 +56,7 @@ public sealed partial class PhoneNumberValidator<T> : PropertyValidator<T, strin
 
 public sealed partial class PhoneExtensionValidator<T> : PropertyValidator<T, string?>
 {
-    public override string Name => nameof(PhoneExtensionValidator<T>);
+    public override string Name => nameof(PhoneExtensionValidator<>);
 
     public override bool IsValid(FluentValidation.ValidationContext<T> context, string? value) =>
         string.IsNullOrEmpty(value) || Pattern().IsMatch(value);
