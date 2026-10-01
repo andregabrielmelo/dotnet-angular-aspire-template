@@ -16,9 +16,11 @@ All notable changes to **this template** are documented here (not changes to pro
 - Dependabot for NuGet, npm, and GitHub Actions dependencies.
 - ESLint (`@angular-eslint`) and Prettier for the frontend; csharpier for the backend, enforced in CI and applied automatically to staged files by a git pre-commit hook (Husky.Net, auto-installed on first build after cloning).
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
+- Caching: `HybridCache` over Redis (provisioned by the AppHost as `cache`), behind a minimal UseCases-owned `ICache`. The `User` get-by-id query is cached (cache-aside) and invalidated by the create/update/delete handlers. Redis is required unless `Cache:AllowLocalOnly` is set (Development and functional tests). See ADR 007.
 
 ### Fixed
 
+- `PUT /users/{id}` and `DELETE /users/{UserId}` always returned 500: they required authorization, but the API has no authentication configured. They are now anonymous, like the other `User` endpoints.
 - A stale Angular test asserting markup that no longer existed.
 - Dead `[Required]` Data Annotations on FastEndpoints request DTOs (FastEndpoints validates via FluentValidation, not Data Annotations - these had no effect).
 - Missing `.AsNoTracking()` on read-only EF Core specifications.

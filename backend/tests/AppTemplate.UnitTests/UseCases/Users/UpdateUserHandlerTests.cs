@@ -1,19 +1,21 @@
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users;
-using AppTemplate.UseCases.Users.Delete;
+using AppTemplate.UseCases.Users.Update;
 using Ardalis.Result;
 using NSubstitute;
 
 namespace AppTemplate.UnitTests.UseCases.Users;
 
-public class DeleteUserHandlerTests
+public class UpdateUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICache _cache = Substitute.For<ICache>();
 
+    private UpdateUserHandler CreateHandler() => new(_repository, _cache);
+
     [Fact]
-    public async Task Handle_WithExistingUser_DeletesAndReturnsSuccess()
+    public async Task Handle_WithExistingUser_UpdatesAndInvalidatesCache()
     {
         var user = User.Create(
             UserName.From("Ada Lovelace"),
@@ -23,32 +25,32 @@ public class DeleteUserHandlerTests
         user.Id = UserId.From(1);
         _repository.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await new DeleteUserHandler(_repository, _cache).Handle(
-            new DeleteUserCommand(UserId.From(1)),
-            CancellationToken.None
-        );
+        var result = await CreateHandler()
+            .Handle(
+                new UpdateUserCommand(UserId.From(1), UserName.From("Ada King"), null),
+                CancellationToken.None
+            );
 
         Assert.True(result.IsSuccess);
-        await _repository.Received(1).DeleteAsync(user, Arg.Any<CancellationToken>());
+        Assert.Equal("Ada King", result.Value.Name.Value);
+        await _repository.Received(1).UpdateAsync(user, Arg.Any<CancellationToken>());
         await _cache
             .Received(1)
-            .RemoveAsync(UserCacheKeys.ById(user.Id), Arg.Any<CancellationToken>());
+            .RemoveAsync(UserCacheKeys.ById(UserId.From(1)), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_WithMissingUser_ReturnsNotFound()
+    public async Task Handle_WithMissingUser_ReturnsNotFoundWithoutInvalidating()
     {
         _repository.GetByIdAsync(UserId.From(1), Arg.Any<CancellationToken>()).Returns((User?)null);
 
-        var result = await new DeleteUserHandler(_repository, _cache).Handle(
-            new DeleteUserCommand(UserId.From(1)),
-            CancellationToken.None
-        );
+        var result = await CreateHandler()
+            .Handle(
+                new UpdateUserCommand(UserId.From(1), UserName.From("Ada King"), null),
+                CancellationToken.None
+            );
 
         Assert.Equal(ResultStatus.NotFound, result.Status);
-        await _repository
-            .DidNotReceive()
-            .DeleteAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
         await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

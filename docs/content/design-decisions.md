@@ -31,11 +31,11 @@ Domain model only: aggregates, value objects, domain events, specifications, and
 
 ## UseCases
 
-CQRS commands/queries via [Mediator](https://github.com/martinothamar/Mediator) (a compile-time source-generated alternative to MediatR). Depends on Core, not on Infrastructure - data access is expressed through `IRepository<T>` and query-service interfaces defined here and implemented in Infrastructure.
+CQRS commands/queries via [Mediator](https://github.com/martinothamar/Mediator) (a compile-time source-generated alternative to MediatR). Depends on Core, not on Infrastructure - data access is expressed through `IRepository<T>` and query-service interfaces defined here and implemented in Infrastructure. UseCases also owns caching decisions: what to cache (via a minimal `ICache`), the cache keys (e.g. `UserCacheKeys`), and invalidation in command handlers - see [ADR 007]({{< relref "architecture-decisions/adr-007-hybrid-cache" >}}).
 
 ## Infrastructure
 
-EF Core + Npgsql implementation of the repositories and query services, plus anything else that talks to the outside world (email via MailKit, etc.). Implements interfaces defined in Core/UseCases so nothing above it depends on EF Core directly.
+EF Core + Npgsql implementation of the repositories and query services, plus anything else that talks to the outside world (email via MailKit, etc.). Implements interfaces defined in Core/UseCases so nothing above it depends on EF Core directly. Caching technology lives here too: `HybridCache` with Redis as its distributed (L2) cache, behind `ICache`.
 
 ## Web
 
@@ -51,4 +51,4 @@ Angular, kept deliberately unopinionated beyond an `auth` and `home` feature sca
 
 # Orchestration
 
-[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), the Web API, and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them (see `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option).
+[.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) wires up Postgres (containerized, with a persistent data volume), Redis (the cache, containerized, no volume), the Web API, and the Angular app (via Aspire's JavaScript app hosting, `npm ci` + `npm start`) as one thing you run and observe together in local development, with service discovery and the Aspire dashboard for logs/traces. It's not used for anything in production - deploy the API and the built Angular app however you'd normally deploy them (see `PublishAsDockerFile()` on the frontend resource in `AppHost.cs` for one option).

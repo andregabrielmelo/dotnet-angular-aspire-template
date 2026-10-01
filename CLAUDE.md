@@ -71,11 +71,13 @@ Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reason
 
 Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Vogen](https://github.com/SteveDunn/Vogen) source-generated value objects with a `Validate` method enforcing invariants at construction. EF Core conversions for them are registered centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs` - add new value objects there, not per-entity. New entity IDs also need a `HasValueGenerator<VogenIdValueGenerator<...>>()` call in that entity's `IEntityTypeConfiguration` (see `UserConfiguration.cs`).
 
+Caching follows ADR 007: UseCases depends only on `UseCases/Caching/ICache.cs` (two members, `GetOrCreateAsync` and `RemoveAsync` - no per-call policies or tags until a real case needs them), and each feature owns its keys (`Users/UserCacheKeys.cs`, `{feature}:{resource}:{identifier}`). Query handlers do cache-aside; command handlers invalidate after the repository call succeeds - never endpoints or repositories. Misses (`null`) are cached too, so a create path must invalidate the new entity's key. `Infrastructure/Caching/` registers `HybridCache` (Redis as L2 when `ConnectionStrings:cache` exists) with centralized expirations; without Redis, startup fails unless `Cache:AllowLocalOnly` is true (set in `appsettings.Development.json` and by `AppTemplateWebApplicationFactory`). `RemoveAsync` doesn't clear other instances' L1 (in-memory) copies, and HybridCache serializes cached values with System.Text.Json even in L1, so cached DTOs must round-trip through it.
+
 Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see `ListUsersQueryService`'s `FromSqlRaw`) must use snake_case column names, not the C# property names.
 
 ### Aspire orchestration (`backend/src/AppTemplate.AppHost/AppHost.cs`)
 
-The AppHost wires up three resources for local dev only (not a production deployment mechanism): a containerized Postgres with a persistent data volume, the Web API, and the Angular frontend via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`). Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`.
+The AppHost wires up four resources for local dev only (not a production deployment mechanism): a containerized Postgres with a persistent data volume, a containerized Redis (`cache`, used by HybridCache), the Web API, and the Angular frontend via Aspire's JavaScript app hosting (`AddJavaScriptApp` + `WithNpm`, running `npm ci`/`npm start`). Connection strings and service URLs are wired by Aspire (`WithReference`/`WaitFor`), not hardcoded in `appsettings.json`.
 
 ### Frontend (`frontend/src/app/`)
 
