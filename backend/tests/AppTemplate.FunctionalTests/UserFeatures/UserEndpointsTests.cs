@@ -228,6 +228,36 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("11 98765 4321", "55", null)] // country code without '+'
+    [InlineData("11 98765 4321", "+5555", null)] // country code too long
+    [InlineData("call me", "+55", null)] // not a phone number
+    [InlineData("11 98765 4321", "+55", "ext12")] // extension isn't digits
+    public async Task Update_WithInvalidPhoneParts_IsRejected(
+        string phoneNumber,
+        string phoneCountryCode,
+        string? phoneExtension
+    )
+    {
+        var subject = NewSubject();
+        var me = await ProvisionAsync(subject);
+
+        var response = await factory
+            .CreateAuthenticatedClient(subject)
+            .PutAsJsonAsync(
+                $"/users/{me.Id}",
+                new
+                {
+                    name = "Ada Lovelace",
+                    phoneNumber,
+                    phoneCountryCode,
+                    phoneExtension,
+                }
+            );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Update_UsesTheRouteId_EvenIfTheBodyNamesAnotherUser()
     {

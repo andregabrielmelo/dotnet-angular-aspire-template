@@ -23,6 +23,8 @@ public class UpdateUserHandlerTests
     private static readonly UpdateUserCommand Command = new(
         UserId.From(1),
         UserName.From("Grace Hopper"),
+        null,
+        null,
         null
     );
 
@@ -84,15 +86,38 @@ public class UpdateUserHandlerTests
     public async Task Handle_WithPhoneNumber_StoresAndReturnsIt()
     {
         _currentUser.ExternalId.Returns("owner-sub");
-        var phoneNumber = new PhoneNumber("+55", "11 98765 4321", null);
+        var command = Command with
+        {
+            PhoneNumber = "11 98765 4321",
+            PhoneCountryCode = "+55",
+            PhoneExtension = "12",
+        };
 
         var result = await new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
-            .Handle(Command with { PhoneNumber = phoneNumber }, CancellationToken.None)
+            .Handle(command, CancellationToken.None)
             .AsTask();
 
+        var expected = new PhoneNumber("+55", "11 98765 4321", "12");
         Assert.True(result.IsSuccess);
-        Assert.Equal(phoneNumber, _target.PhoneNumber);
-        Assert.Equal(phoneNumber, result.Value.PhoneNumber);
+        Assert.Equal(expected, _target.PhoneNumber);
+        Assert.Equal(expected, result.Value.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Handle_WithPhoneNumberButNoCountryCode_FailsAndChangesNothing()
+    {
+        _currentUser.ExternalId.Returns("owner-sub");
+
+        var result = await new UpdateUserHandler(_repository, _currentUser, _cacheInvalidator)
+            .Handle(Command with { PhoneNumber = "11 98765 4321" }, CancellationToken.None)
+            .AsTask();
+
+        Assert.Equal(ResultStatus.Error, result.Status);
+        Assert.Equal("Ada Lovelace", _target.Name.Value);
+        Assert.Null(_target.PhoneNumber);
+        await _repository
+            .DidNotReceive()
+            .UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

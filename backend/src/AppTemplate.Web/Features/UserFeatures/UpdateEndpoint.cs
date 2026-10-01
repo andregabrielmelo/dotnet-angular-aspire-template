@@ -3,6 +3,7 @@ using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Update;
 using AppTemplate.Web.Extensions;
+using AppTemplate.Web.Validation;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -75,17 +76,12 @@ public class UpdateEndpoint(IMediator _mediator)
         Results<Ok<UpdateUserResponse>, NotFound, ProblemHttpResult>
     > ExecuteAsync(UpdateUserRequest request, CancellationToken cancellationToken)
     {
-        var phoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
-            ? null
-            : new PhoneNumber(
-                request.PhoneCountryCode!,
-                request.PhoneNumber,
-                string.IsNullOrWhiteSpace(request.PhoneExtension) ? null : request.PhoneExtension
-            );
         var command = new UpdateUserCommand(
             UserId.From(request.Id),
             UserName.From(request.Name),
-            phoneNumber
+            request.PhoneNumber,
+            request.PhoneCountryCode,
+            request.PhoneExtension
         );
         var result = await _mediator.Send(command, cancellationToken);
 
@@ -109,21 +105,15 @@ public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
         RuleFor(x => x.PhoneCountryCode)
             .NotEmpty()
             .WithMessage("Phone country code is required with a phone number")
-            .Matches(@"^\+[1-9]\d{0,2}$")
-            .WithMessage("Phone country code must look like +1 or +55")
             .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
-        RuleFor(x => x.PhoneNumber)
-            .Matches(@"^[0-9 ()-]{4,20}$")
-            .WithMessage("Phone number may only contain digits, spaces, '(', ')' and '-'")
-            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
-        RuleFor(x => x.PhoneExtension)
-            .Matches(@"^\d{1,10}$")
-            .WithMessage("Phone extension must be 1 to 10 digits")
-            .When(x => !string.IsNullOrWhiteSpace(x.PhoneExtension));
+        RuleFor(x => x.PhoneCountryCode).PhoneCountryCode();
+        RuleFor(x => x.PhoneNumber).PhoneNumber();
+        RuleFor(x => x.PhoneExtension).PhoneExtension();
     }
 }
 
 public sealed class UpdateUserMapper : Mapper<UpdateUserRequest, UpdateUserResponse, UserDto>
 {
-    public override UpdateUserResponse FromEntity(UserDto e) => new(UserRecord.FromDto(e));
+    public override UpdateUserResponse FromEntity(UserDto e) =>
+        new(new UserRecord(e.Id.Value, e.Name.Value, e.PhoneNumber?.ToString()));
 }
