@@ -17,5 +17,12 @@ public static class Permission
     /// <summary>Delete users.</summary>
     public const string UsersDelete = "users:delete";
 
-    public static IReadOnlyList<string> All { get; } = [UsersRead, UsersWrite, UsersDelete];
+    /// <summary>List recurring background jobs and their recent runs.</summary>
+    public const string JobsRead = "jobs:read";
+
+    /// <summary>Trigger, pause, resume, remove and restore recurring background jobs.</summary>
+    public const string JobsManage = "jobs:manage";
+
+    public static IReadOnlyList<string> All { get; } =
+    [UsersRead, UsersWrite, UsersDelete, JobsRead, JobsManage];
 }

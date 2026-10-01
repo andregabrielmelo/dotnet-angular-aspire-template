@@ -53,6 +53,13 @@ describe('HomePage', () => {
     expect(setup([Permission.UsersRead]).text).toContain('Manage users');
   });
 
+  it('offers job management only with jobs:read', () => {
+    expect(setup([]).text).not.toContain('Manage jobs');
+
+    TestBed.resetTestingModule();
+    expect(setup([Permission.JobsRead]).text).toContain('Manage jobs');
+  });
+
   it('logs out through the auth service', () => {
     const { fixture } = setup([]);
 

@@ -34,6 +34,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(entity => entity.ExternalId).IsUnique();
 
+        // Set by Postgres on insert (EF leaves the column out while the value is unset); the
+        // migration that added it backfilled existing rows with the migration time.
+        builder.Property(entity => entity.CreatedAtUtc).HasDefaultValueSql("now()");
+
         builder.OwnsOne(builder => builder.PhoneNumber);
     }
 }

@@ -1,5 +1,7 @@
-﻿using AppTemplate.Core.Interfaces;
+using AppTemplate.Core.Interfaces;
+using AppTemplate.FunctionalTests.Jobs;
 using AppTemplate.Infrastructure.Data;
+using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.UseCases.Users.ForgotPassword;
 using Hangfire;
 using Hangfire.InMemory;
@@ -28,6 +30,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
     public FakePasswordResetService PasswordResetService { get; } = new();
 
+    /// <summary>Counts runs of <see cref="TestRecurringJobDefinition"/>.</summary>
+    public TestRecurringJobProbe TestRecurringJob { get; } = new();
+
     /// <summary>Records emails instead of sending them over SMTP.</summary>
     public FakeEmailSender EmailSender { get; } = new();
 
@@ -44,7 +49,7 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Keycloak:Authority", "https://keycloak.test/realms/apptemplate");
         // Jobs are enqueued into in-memory storage (below) but never executed in the
         // background - tests run job classes directly when they need to.
-        builder.UseSetting("BackgroundJobs:RunServer", "false");
+        builder.UseSetting("JobScheduling:RunServer", "false");
 
         builder.ConfigureServices(services =>
         {
@@ -82,6 +87,10 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<JobStorage>();
             services.AddSingleton<JobStorage>(_ => new InMemoryStorage());
 
+            // A recurring job the tests control, so they never have to run (or pause) real ones.
+            services.AddSingleton(TestRecurringJob);
+            services.AddRecurringJob<TestRecurringJobDefinition>();
+
             services
                 .AddAuthentication(options =>
                 {
@@ -95,6 +104,8 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
+    private static int _nextClientAddress;
+
     /// <summary>
     /// A client whose requests are authenticated as the given <c>sub</c>, holding the given
     /// API permissions (Keycloak client roles).
@@ -103,6 +114,10 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
+        // Throttled endpoints key on the client IP (as forwarded by the backend for
+        // frontend) - every client gets its own, so tests never share a rate-limit window.
+        var n = Interlocked.Increment(ref _nextClientAddress);
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.1.{n / 250}.{n % 250 + 1}");
         if (permissions.Length > 0)
         {
             client.DefaultRequestHeaders.Add(

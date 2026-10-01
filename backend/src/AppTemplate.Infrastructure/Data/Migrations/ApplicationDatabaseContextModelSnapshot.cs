@@ -28,6 +28,12 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("now()");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(320)

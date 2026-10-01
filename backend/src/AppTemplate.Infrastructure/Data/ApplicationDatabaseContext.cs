@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
 
 namespace AppTemplate.Infrastructure.Data;

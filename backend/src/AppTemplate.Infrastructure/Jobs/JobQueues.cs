@@ -1,16 +1,17 @@
 ﻿namespace AppTemplate.Infrastructure.Jobs;
 
 /// <summary>
-/// Hangfire queues, listed in priority order for the server. Hangfire requires queue names
-/// to be lowercase letters, digits, underscores and dashes.
+/// Hangfire queues. Hangfire.PostgreSql fetches from a server's queues in <b>alphabetical</b>
+/// order, not in the order they're listed, so a queue's name decides its priority: "critical"
+/// sorts before "default". Names must be lowercase letters, digits, underscores and dashes.
 /// </summary>
 public static class JobQueues
 {
     /// <summary>User-facing side effects (emails): processed first.</summary>
-    public const string Emails = "emails";
+    public const string Critical = "critical";
 
     /// <summary>Maintenance and everything else.</summary>
     public const string Default = "default";
 
-    public static readonly string[] All = [Emails, Default];
+    public static readonly string[] All = [Critical, Default];
 }
