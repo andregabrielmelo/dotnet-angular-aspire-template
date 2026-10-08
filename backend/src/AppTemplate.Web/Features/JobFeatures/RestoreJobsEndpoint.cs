@@ -1,9 +1,9 @@
 ﻿using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Jobs.Restore;
 
 namespace AppTemplate.Web.Features.JobFeatures;
 
-public class RestoreJobsEndpoint(IJobManagementService _jobs)
+public class RestoreJobsEndpoint(IMediator _mediator)
     : EndpointWithoutRequest<Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
@@ -30,7 +30,7 @@ public class RestoreJobsEndpoint(IJobManagementService _jobs)
         CancellationToken cancellationToken
     )
     {
-        var result = await _jobs.RestoreAsync(cancellationToken);
+        var result = await _mediator.Send(new RestoreJobsCommand(), cancellationToken);
         return result.IsSuccess
             ? TypedResults.NoContent()
             : TypedResults.Problem(

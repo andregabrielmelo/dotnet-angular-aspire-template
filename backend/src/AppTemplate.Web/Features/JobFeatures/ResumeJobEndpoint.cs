@@ -1,10 +1,10 @@
 ﻿using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Jobs.Resume;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
 
-public class ResumeJobEndpoint(IJobManagementService _jobs)
+public class ResumeJobEndpoint(IMediator _mediator)
     : Endpoint<JobIdRequest, Results<NoContent, NotFound, ProblemHttpResult>>
 {
     public override void Configure()
@@ -34,5 +34,8 @@ public class ResumeJobEndpoint(IJobManagementService _jobs)
     public override async Task<Results<NoContent, NotFound, ProblemHttpResult>> ExecuteAsync(
         JobIdRequest request,
         CancellationToken cancellationToken
-    ) => (await _jobs.ResumeAsync(request.JobId, cancellationToken)).ToDeleteResult();
+    ) =>
+        (
+            await _mediator.Send(new ResumeJobCommand(request.JobId), cancellationToken)
+        ).ToDeleteResult();
 }
