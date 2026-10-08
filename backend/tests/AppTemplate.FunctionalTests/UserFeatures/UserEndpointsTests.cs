@@ -87,6 +87,7 @@ public class UserEndpointsTests : IClassFixture<AppTemplateWebApplicationFactory
         var existing = await CreateUserAsync("Ada Lovelace");
         var nextId = existing.Id + 1;
 
+        // Misses aren't cached, so this 404 can't outlive the user's creation
         var missing = await _client.GetAsync($"/users/{nextId}");
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
 

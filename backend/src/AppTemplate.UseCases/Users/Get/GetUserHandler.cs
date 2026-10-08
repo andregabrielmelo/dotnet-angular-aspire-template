@@ -15,7 +15,7 @@ public class GetUserHandler(IRepository<User> _repository, ICache _cache)
         CancellationToken cancellationToken
     )
     {
-        // Cache-aside: a miss (null) is cached too, so CreateUserHandler invalidates the new id's key
+        // Cache-aside; a miss (null) isn't cached, so a newly created user is found right away
         var dto = await _cache.GetOrCreateAsync<UserDto?>(
             UserCacheKeys.ById(request.UserId),
             async ct =>

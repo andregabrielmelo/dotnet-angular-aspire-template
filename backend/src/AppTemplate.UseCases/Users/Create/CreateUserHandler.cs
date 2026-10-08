@@ -1,7 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Caching;
 using Microsoft.AspNetCore.Identity;
 
 namespace AppTemplate.UseCases.Users.Create;
@@ -15,8 +14,7 @@ public record CreateUserCommand(
 
 public class CreateUserHandler(
     IRepository<User> _userRepository,
-    IPasswordHasher<User> _passwordHasher,
-    ICache _cache
+    IPasswordHasher<User> _passwordHasher
 ) : ICommandHandler<CreateUserCommand, Result<UserId>>
 {
     public async ValueTask<Result<UserId>> Handle(
@@ -44,9 +42,6 @@ public class CreateUserHandler(
             newUser.UpdatePhoneNumber(phoneNumber);
         }
         var createdItem = await _userRepository.AddAsync(newUser, cancellationToken);
-
-        // A GET for this id before it existed may have cached a miss (ids are sequential)
-        await _cache.RemoveAsync(UserCacheKeys.ById(createdItem.Id), cancellationToken);
 
         return createdItem.Id;
     }

@@ -1,7 +1,5 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Create;
 using Ardalis.Result;
 using Microsoft.AspNetCore.Identity;
@@ -15,9 +13,8 @@ public class CreateUserHandlerTests
     private readonly IPasswordHasher<User> _passwordHasher = Substitute.For<
         IPasswordHasher<User>
     >();
-    private readonly ICache _cache = Substitute.For<ICache>();
 
-    private CreateUserHandler CreateHandler() => new(_repository, _passwordHasher, _cache);
+    private CreateUserHandler CreateHandler() => new(_repository, _passwordHasher);
 
     [Fact]
     public async Task Handle_WithNewEmail_CreatesUser()
@@ -56,35 +53,6 @@ public class CreateUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithNewEmail_InvalidatesCachedMissForNewId()
-    {
-        _repository
-            .FirstOrDefaultAsync(Arg.Any<UserByEmailSpecification>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-        _repository
-            .AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var user = callInfo.Arg<User>();
-                user.Id = UserId.From(7);
-                return Task.FromResult(user);
-            });
-
-        var command = new CreateUserCommand(
-            UserName.From("Ada Lovelace"),
-            new EmailAddress("ada@example.com"),
-            "Passw0rd!",
-            ""
-        );
-
-        await CreateHandler().Handle(command, CancellationToken.None);
-
-        await _cache
-            .Received(1)
-            .RemoveAsync(UserCacheKeys.ById(UserId.From(7)), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
     public async Task Handle_WithAlreadyRegisteredEmail_ReturnsInvalidWithoutCreating()
     {
         var existingUser = User.Create(
@@ -107,6 +75,5 @@ public class CreateUserHandlerTests
 
         Assert.Equal(ResultStatus.Invalid, result.Status);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

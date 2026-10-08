@@ -11,17 +11,35 @@ public static class CachingServiceExtensions
         ILogger logger
     )
     {
+        // Read eagerly: the expirations are needed now to build HybridCache's default entry options
+        var options = config.GetSection(CacheOptions.SectionName).Get<CacheOptions>() ?? new();
+        if (options.Expiration <= TimeSpan.Zero || options.LocalExpiration <= TimeSpan.Zero)
+        {
+            throw new InvalidOperationException(
+                "'Cache:Expiration' and 'Cache:LocalExpiration' must be positive."
+            );
+        }
+        if (options.LocalExpiration > options.Expiration)
+        {
+            throw new InvalidOperationException(
+                "'Cache:LocalExpiration' must not be longer than 'Cache:Expiration'."
+            );
+        }
+
         string? connectionString = config.GetConnectionString("cache");
         if (connectionString is not null)
         {
             // HybridCache picks up the registered IDistributedCache as its L2
-            services.AddStackExchangeRedisCache(options =>
+            services.AddStackExchangeRedisCache(redis =>
             {
-                options.Configuration = connectionString;
-                options.InstanceName = "apptemplate:";
+                redis.Configuration = connectionString;
+                redis.InstanceName = "apptemplate:";
             });
+
+            // No "live" tag: Redis being down makes the app not ready, not dead
+            services.AddHealthChecks().AddRedis(connectionString, name: "cache");
         }
-        else if (config.GetValue<bool>("Cache:AllowLocalOnly"))
+        else if (options.AllowLocalOnly)
         {
             logger.LogWarning(
                 "No 'cache' connection string found; HybridCache is running L1-only (in-memory, per instance)"
@@ -34,13 +52,12 @@ public static class CachingServiceExtensions
             );
         }
 
-        services.AddHybridCache(options =>
+        services.AddHybridCache(hybrid =>
         {
-            // Local (L1) entries are not invalidated across instances, so keep them short
-            options.DefaultEntryOptions = new HybridCacheEntryOptions
+            hybrid.DefaultEntryOptions = new HybridCacheEntryOptions
             {
-                Expiration = TimeSpan.FromMinutes(30),
-                LocalCacheExpiration = TimeSpan.FromMinutes(1),
+                Expiration = options.Expiration,
+                LocalCacheExpiration = options.LocalExpiration,
             };
         });
 

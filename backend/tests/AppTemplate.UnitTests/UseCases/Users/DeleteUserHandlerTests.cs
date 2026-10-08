@@ -1,5 +1,4 @@
 using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Delete;
 using Ardalis.Result;
@@ -10,7 +9,7 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class DeleteUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly ICache _cache = Substitute.For<ICache>();
+    private readonly FakeCache _cache = new();
 
     [Fact]
     public async Task Handle_WithExistingUser_DeletesAndReturnsSuccess()
@@ -30,9 +29,7 @@ public class DeleteUserHandlerTests
 
         Assert.True(result.IsSuccess);
         await _repository.Received(1).DeleteAsync(user, Arg.Any<CancellationToken>());
-        await _cache
-            .Received(1)
-            .RemoveAsync(UserCacheKeys.ById(user.Id), Arg.Any<CancellationToken>());
+        Assert.Equal([UserCacheKeys.ById(user.Id)], _cache.RemovedKeys);
     }
 
     [Fact]
@@ -49,6 +46,6 @@ public class DeleteUserHandlerTests
         await _repository
             .DidNotReceive()
             .DeleteAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Assert.Empty(_cache.RemovedKeys);
     }
 }
