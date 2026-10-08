@@ -18,6 +18,7 @@ ADR 012 introduced Hangfire with two hand-registered jobs. Adding a recurring jo
 - **One entry point for every recurring job.** Hangfire stores only the job id, and the runner resolves the definition in a fresh DI scope.
 - **Pause and resume**, done differently from netrock (see below).
 - **`IJobManagementService`** (UseCases): list, detail with recent runs, trigger, pause, resume, remove, and restore. Restore is a **sync with code**: it re-registers every definition and removes recurring jobs whose definition no longer exists, which startup does too. Paused jobs stay paused. It is exposed as `/admin/jobs` endpoints:
+  - the endpoints go through Mediator, like the rest of the API: the queries `GetJobQuery` and `ListJobsQuery`, and one command per action (`TriggerJobCommand`, `PauseJobCommand`, `ResumeJobCommand`, `RemoveJobCommand`, `RestoreJobsCommand`) in `UseCases/Jobs/`
   - reading needs `jobs:read`; changing needs `jobs:manage`
   - changes are rate limited per client IP
   - the Angular pages are `/jobs` and `/jobs/:jobId`
