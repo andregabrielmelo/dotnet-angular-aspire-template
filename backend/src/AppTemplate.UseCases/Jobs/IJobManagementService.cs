@@ -6,8 +6,9 @@
 /// Implemented in Infrastructure on top of Hangfire. Job definitions themselves are registered
 /// in code and scheduled at startup; this service changes their runtime state.
 /// <para>
-/// There is no domain logic to orchestrate here, so endpoints call this service directly instead
-/// of going through Mediator commands.
+/// Endpoints reach it through Mediator, like the rest of the API: the queries in
+/// <c>Jobs/Get</c> and <c>Jobs/List</c>, and one command per action (<c>Jobs/Trigger</c>,
+/// <c>Pause</c>, <c>Resume</c>, <c>Remove</c>, <c>Restore</c>).
 /// </para>
 /// </summary>
 public interface IJobManagementService

@@ -80,7 +80,10 @@ public class ListEndpoint(IMediator mediator)
         CancellationToken cancellationToken
     )
     {
-        var result = await _mediator.Send(new ListUsersQuery(request.Page, request.PerPage));
+        var result = await _mediator.Send(
+            new ListUsersQuery(request.Page, request.PerPage),
+            cancellationToken
+        );
         if (!result.IsSuccess)
         {
             await Send.ErrorsAsync(statusCode: 400, cancellationToken);

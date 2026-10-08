@@ -1,9 +1,11 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Jobs.List;
+using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
 
-public class ListJobsEndpoint(IJobManagementService _jobs)
+public class ListJobsEndpoint(IMediator _mediator)
     : EndpointWithoutRequest<Ok<IReadOnlyList<RecurringJobResponse>>>
 {
     public override void Configure()
@@ -26,9 +28,10 @@ public class ListJobsEndpoint(IJobManagementService _jobs)
         CancellationToken cancellationToken
     )
     {
-        var jobs = await _jobs.GetRecurringJobsAsync(cancellationToken);
-        return TypedResults.Ok<IReadOnlyList<RecurringJobResponse>>(
-            jobs.Select(RecurringJobResponse.From).ToList()
-        );
+        var result = await _mediator.Send(new ListJobsQuery(), cancellationToken);
+        return result.ToOkOnlyResult<
+            IReadOnlyList<RecurringJobDto>,
+            IReadOnlyList<RecurringJobResponse>
+        >(jobs => jobs.Select(RecurringJobResponse.From).ToList());
     }
 }
