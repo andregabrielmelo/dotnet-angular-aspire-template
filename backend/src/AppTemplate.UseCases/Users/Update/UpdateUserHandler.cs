@@ -4,9 +4,6 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Update;
 
-public record UpdateUserCommand(UserId UserId, UserName UserName, string? PhoneNumber)
-    : Mediator.ICommand<Result<UserDto>>;
-
 public class UpdateUserHandler(IRepository<User> _repository, ICache _cache)
     : Mediator.ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {

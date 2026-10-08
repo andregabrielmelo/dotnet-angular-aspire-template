@@ -5,8 +5,6 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Get;
 
-public record GetUserQuery(UserId UserId) : IQuery<Result<UserDto>>;
-
 public class GetUserHandler(IRepository<User> _repository, ICache _cache)
     : IQueryHandler<GetUserQuery, Result<UserDto>>
 {
