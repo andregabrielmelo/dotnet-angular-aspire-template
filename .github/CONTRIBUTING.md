@@ -18,4 +18,26 @@ This is a personal template repository - the primary way to "use" it is clicking
 - Run `dotnet csharpier format .` (backend) and `npx prettier --write .` (frontend) before committing - CI checks formatting.
 - If you're changing something architectural, consider whether it needs an [ADR](../docs/content/architecture-decisions/README.md).
 
+## Branching: Gitflow
+
+This repo follows [Gitflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow):
+
+| Branch | Branched from | PR into |
+|---|---|---|
+| `feature/<short-kebab-name>` | `develop` | `develop` |
+| `release/<version>` | `develop` | `main` (tagged), then back into `develop` |
+| `hotfix/<short-name>` | `main` | `main` (tagged), then back into `develop` |
+
+`main` holds released history only, and `develop` is the integration branch. Never commit to either directly. Dependabot PRs target `develop`.
+
+## Commits: Conventional Commits
+
+Every commit message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[(scope)][!]: <description>`, for example `feat(frontend): add password reset form` or `ci: pin actions to commit SHAs`.
+
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- The scope is optional and names the area touched: `backend`, `frontend`, `auth`, `apphost`, `ci`, and so on.
+- Write the description in the imperative mood, with no trailing period. Mark breaking changes with `!` and a `BREAKING CHANGE:` footer.
+
+The [PR Conventions](workflows/pr-conventions.yml) workflow checks both rules on every PR: the branch name against its target, and every non-merge commit subject. To fix a rejected commit message, reword it with `git rebase -i` and force-push.
+
 Thanks for taking the time to improve it.

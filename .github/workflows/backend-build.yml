@@ -3,25 +3,30 @@ name: Backend Build
 on:
   push:
     branches:
-      - '**'
+      - main
+      - develop
     paths:
       - 'backend/**'
       - '.github/workflows/backend-build.yml'
   pull_request:
-    branches:
-      - '**'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }} # superseded PR runs are cancelled; every main/develop run finishes
+
 jobs:
   build:
     name: Build (.NET 10, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25 # the Linux job also pulls Postgres for Testcontainers
 
-    env:
-      HUSKY: 0 # skip Directory.Build.targets' git-hooks auto-install - pointless in CI, never commits
 
     strategy:
       matrix:
@@ -30,16 +35,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup .NET 10 SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: backend/**/packages.lock.json
 
       - name: Restore dependencies
         working-directory: backend
-        run: dotnet restore AppTemplate.slnx
+        run: dotnet restore AppTemplate.slnx --locked-mode
 
       - name: Check formatting (csharpier)
         working-directory: backend

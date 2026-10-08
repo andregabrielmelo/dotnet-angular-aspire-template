@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>d2dcc3a3-5da1-4dfc-a6bf-2950502663fb</UserSecretsId>
+    <!-- The Aspire SDK pulls OS-specific packages (Aspire.Dashboard.Sdk.<rid>, Aspire.Hosting.Orchestration.<rid>), so a lock file generated on one OS fails locked-mode restore on the others. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>
