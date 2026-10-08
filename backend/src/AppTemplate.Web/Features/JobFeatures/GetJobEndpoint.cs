@@ -1,10 +1,10 @@
 ﻿using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Jobs.Get;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
 
-public class GetJobEndpoint(IJobManagementService _jobs)
+public class GetJobEndpoint(IMediator _mediator)
     : Endpoint<JobIdRequest, Results<Ok<RecurringJobDetailResponse>, NotFound, ProblemHttpResult>>
 {
     public override void Configure()
@@ -29,7 +29,7 @@ public class GetJobEndpoint(IJobManagementService _jobs)
         Results<Ok<RecurringJobDetailResponse>, NotFound, ProblemHttpResult>
     > ExecuteAsync(JobIdRequest request, CancellationToken cancellationToken)
     {
-        var result = await _jobs.GetRecurringJobAsync(request.JobId, cancellationToken);
+        var result = await _mediator.Send(new GetJobQuery(request.JobId), cancellationToken);
         return result.ToGetByIdResult(RecurringJobDetailResponse.From);
     }
 }
