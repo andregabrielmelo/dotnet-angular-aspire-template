@@ -1,6 +1,11 @@
-﻿using AppTemplate.UseCases.Caching;
+﻿using AppTemplate.ServiceDefaults;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.Web.Caching;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using StackExchange.Redis;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -29,8 +34,39 @@ public static class CachingConfigurations
         if (useRedis)
         {
             // IDistributedCache (HybridCache's L2) and the output cache store, from Aspire.
-            builder.AddRedisDistributedCache(RedisConnectionName);
-            builder.AddRedisOutputCache(RedisConnectionName);
+            // Aspire's own Redis health checks are untagged, so they would gate readiness;
+            // Redis is optional, so it gets a dependency-only check instead (below).
+            builder.AddRedisDistributedCache(
+                RedisConnectionName,
+                settings => settings.DisableHealthChecks = true
+            );
+            builder.AddRedisOutputCache(
+                RedisConnectionName,
+                settings => settings.DisableHealthChecks = true
+            );
+            services
+                .Decorate<IDistributedCache>(
+                    (provider, redis) =>
+                        new FailOpenDistributedCache(
+                            redis,
+                            provider.GetRequiredService<IConnectionMultiplexer>()
+                        )
+                )
+                .Decorate<IOutputCacheStore>(
+                    (provider, redis) =>
+                        new FailOpenOutputCacheStore(
+                            redis,
+                            provider.GetRequiredService<IConnectionMultiplexer>()
+                        )
+                );
+            services
+                .AddHealthChecks()
+                .AddCheck<RedisConnectionHealthCheck>(
+                    RedisConnectionName,
+                    failureStatus: HealthStatus.Degraded,
+                    tags: [HealthCheckTags.Dependency],
+                    timeout: TimeSpan.FromSeconds(3)
+                );
         }
 
         services.AddHybridCache(options =>

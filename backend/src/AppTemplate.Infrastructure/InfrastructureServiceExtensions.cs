@@ -3,11 +3,17 @@ using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace AppTemplate.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
+    public const string PostgresHealthCheckName = "postgres";
+
+    // ServiceDefaults' HealthCheckTags.Ready; Infrastructure doesn't reference ServiceDefaults.
+    private const string ReadyHealthCheckTag = "ready";
+
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
         IConfigurationManager config,
@@ -48,6 +54,22 @@ public static class InfrastructureServiceExtensions
                     warnings.Log(RelationalEventId.PendingModelChangesWarning)
                 );
             }
+        );
+
+        // Postgres is the one required dependency: without it this instance can't serve
+        // requests, so it gates readiness (/health). See best-practices.md, Health checks.
+        services
+            .AddHealthChecks()
+            .AddDbContextCheck<ApplicationDatabaseContext>(
+                PostgresHealthCheckName,
+                tags: [ReadyHealthCheckTag],
+                customTestQuery: (context, cancellationToken) =>
+                    context.Database.CanConnectAsync(cancellationToken)
+            );
+        // An unreachable host would otherwise hold the probe for Npgsql's 15-second timeout.
+        services.Configure<HealthCheckServiceOptions>(options =>
+            options.Registrations.Single(r => r.Name == PostgresHealthCheckName).Timeout =
+                TimeSpan.FromSeconds(5)
         );
 
         services

@@ -752,6 +752,7 @@
           "MailKit": "[4.17.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.10, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.10, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.10, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
         }
@@ -916,6 +917,15 @@
         "contentHash": "5S2z7mIiLNkaL4E/EVB666hHLNOZVLUxLQmz4S4Zb0OfXd57kAf9zB6EHwteADyywdwD2Kmd2R3mzC0eCjv8jg==",
         "dependencies": {
           "Microsoft.Extensions.Compliance.Abstractions": "10.8.0"
+        }
+      },
+      "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "jgYLn+CG1/EgZ3lsAuRUvb0RFhr1q23/z4U85arQ8XgABVZAuJIVecLaShMxsB/AS0ufY+Z4OCv1facaiEyc5g==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.10"
         }
       },
       "Microsoft.Extensions.Http.Resilience": {
