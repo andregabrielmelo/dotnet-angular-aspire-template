@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+The agent-neutral rules (layer boundaries, endpoint and use case conventions, testing, the done-means checklist) live in [`AGENTS.md`](AGENTS.md), with path-specific rules in `.github/instructions/`. Follow them; this file adds commands and a detailed architecture tour, and must not contradict them.
+
 ## What this is
 
 A GitHub **template repository** for starting new full-stack projects: a Clean Architecture .NET backend, an Angular frontend, and .NET Aspire orchestrating both locally. It is not a sample app - the `User` feature is a deliberate end-to-end reference slice (Core → UseCases → Infrastructure → Web) to copy the shape of when adding a real feature, then delete once no longer needed as a reference.
