@@ -6,7 +6,7 @@ weight: 80
 # ADR 008: Password reset through Keycloak's Admin API
 
 ## Status
-Accepted
+Accepted. Routes amended by [ADR 015]({{< relref "adr-015-api-versioning" >}}): the endpoint is now `POST /v1/password-reset`, proxied as `POST /api/v1/password-reset`.
 
 ## Context
 Users who forget their password need to reset it. Keycloak owns the credentials ([ADR 007]({{< relref "adr-007-authentication-backend-for-frontend-keycloak" >}})), so the application must never see, store or set a password itself. The reset has to start from the app's own signed-out page, work without revealing which emails have accounts, and be hard to abuse for flooding someone's inbox.
