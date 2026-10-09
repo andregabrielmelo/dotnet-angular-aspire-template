@@ -13,7 +13,7 @@ Some reads happen far more often than the data changes. The SPA calls `GET /user
 
 ## Decision
 **HybridCache for application data** (UseCases):
-- `GetUserHandler` (by id) and `GetOrCreateCurrentUserHandler` (by the token's `sub`) read through `HybridCache.GetOrCreateAsync`. Concurrent misses share one database call (stampede protection), and "not found" is cached too.
+- `GetUserHandler` (by id) and `GetOrCreateCurrentUserHandler` (by the token's `sub`) read through `HybridCache.GetOrCreateAsync`. Concurrent misses share one database call (stampede protection). "Not found" is never cached (`HybridCacheExtensions.GetOrCreateExistingAsync`): otherwise any caller could fill the cache with ids that don't exist, and a newly created user would stay invisible until the cached miss expired.
 - Entries are `CachedUser`, a record of primitives. It serializes cleanly to the distributed cache and never exposes tracked entities or value objects.
 - **L1** is in-process memory (1 minute). **L2** is Redis (10 minutes) when Aspire provides the `cache` connection. The short L1 bounds how long another instance can serve a copy after an invalidation.
 - Caching happens *inside* the use case, which runs only after the endpoint's authorization. The cached value is the same for everyone.

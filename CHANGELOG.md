@@ -43,6 +43,7 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Fixed
 
+- User lookups no longer cache "not found", so requests for ids that don't exist can't fill the cache.
 - `MimeKitEmailSender` disconnected with an already-cancelled token, so every send threw after delivering the message. It now takes a `CancellationToken` and no longer logs recipient addresses.
 - The development `Mailserver` setting used the key `Server` instead of `Hostname`, so it was ignored.
 

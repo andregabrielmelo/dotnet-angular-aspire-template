@@ -49,7 +49,7 @@ public class GetUserHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MissingUser_IsNotFoundAndCachedToo()
+    public async Task Handle_MissingUser_IsNotFoundAndNotCached()
     {
         RepositoryReturns(null);
         var handler = new GetUserHandler(_repository, TestCaches.Create());
@@ -59,7 +59,20 @@ public class GetUserHandlerTests
 
         Assert.Equal(ResultStatus.NotFound, first.Status);
         Assert.Equal(ResultStatus.NotFound, second.Status);
-        await RepositoryWasQueried(1);
+        await RepositoryWasQueried(2);
+    }
+
+    [Fact]
+    public async Task Handle_UserCreatedAfterAMiss_IsFoundRightAway()
+    {
+        RepositoryReturns(null);
+        var handler = new GetUserHandler(_repository, TestCaches.Create());
+        await handler.Handle(Query, CancellationToken.None);
+
+        RepositoryReturns(CreateUser());
+        var result = await handler.Handle(Query, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]

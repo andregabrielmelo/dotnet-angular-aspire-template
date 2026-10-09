@@ -26,7 +26,7 @@ public class GetOrCreateCurrentUserHandler(
         CancellationToken cancellationToken
     )
     {
-        var existingUser = await _cache.GetOrCreateAsync(
+        var existingUser = await _cache.GetOrCreateExistingAsync(
             CachedUser.KeyByExternalId(command.ExternalId),
             (_repository, command.ExternalId),
             static async (state, token) =>
@@ -65,7 +65,7 @@ public class GetOrCreateCurrentUserHandler(
         var newUser = User.Create(command.ExternalId, command.Name, command.Email);
         var createdUser = await _repository.AddAsync(newUser, cancellationToken);
 
-        // Drops the cached "no such user" for this identity, and user lists that lack it.
+        // User lists cached before this user existed are now stale.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
 
         // Sending email is slow and can fail - never make the sign-in request wait on it.
