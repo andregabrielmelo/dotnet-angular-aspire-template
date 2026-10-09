@@ -23,7 +23,7 @@ describe('JobDetailPage', () => {
   it('shows the schedule and recent runs, including failures', () => {
     const { fixture, httpMock, element } = setup();
 
-    httpMock.expectOne('api/admin/jobs/sync-user-profiles').flush({
+    httpMock.expectOne('api/v1/admin/jobs/sync-user-profiles').flush({
       job: {
         id: 'sync-user-profiles',
         cron: '0 * * * *',
@@ -61,7 +61,7 @@ describe('JobDetailPage', () => {
     const { fixture, httpMock, element } = setup();
 
     httpMock
-      .expectOne('api/admin/jobs/sync-user-profiles')
+      .expectOne('api/v1/admin/jobs/sync-user-profiles')
       .flush(null, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
@@ -70,7 +70,7 @@ describe('JobDetailPage', () => {
 
   it('loads the new job when the route switches to another job id', async () => {
     const { fixture, httpMock, element } = setup();
-    const first = httpMock.expectOne('api/admin/jobs/sync-user-profiles');
+    const first = httpMock.expectOne('api/v1/admin/jobs/sync-user-profiles');
 
     fixture.componentRef.setInput('jobId', 'test-recurring-job');
     fixture.detectChanges();
@@ -78,7 +78,7 @@ describe('JobDetailPage', () => {
 
     // The previous job's request is cancelled, so its late response can't win.
     expect(first.cancelled).toBe(true);
-    httpMock.expectOne('api/admin/jobs/test-recurring-job').flush({
+    httpMock.expectOne('api/v1/admin/jobs/test-recurring-job').flush({
       job: {
         id: 'test-recurring-job',
         cron: '0 0 * * *',

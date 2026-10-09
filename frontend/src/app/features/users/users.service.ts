@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { UserPage } from './users.model';
+import { API_V1 } from '../../core/api/api-paths';
 
-const BASE = 'api/users';
+const BASE = `${API_V1}/users`;
 
 /** The users admin API (reached through the backend for frontend). */
 @Injectable({ providedIn: 'root' })

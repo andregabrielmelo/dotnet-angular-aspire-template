@@ -34,7 +34,7 @@ describe('JobsPage', () => {
     const fixture = TestBed.createComponent(JobsPage);
     const httpMock = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
-    httpMock.expectOne('api/admin/jobs').flush(jobs);
+    httpMock.expectOne('api/v1/admin/jobs').flush(jobs);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const button = (label: string) =>
@@ -57,11 +57,11 @@ describe('JobsPage', () => {
     ]);
 
     button('Pause')!.click();
-    const pause = httpMock.expectOne('api/admin/jobs/sync-user-profiles/pause');
+    const pause = httpMock.expectOne('api/v1/admin/jobs/sync-user-profiles/pause');
     expect(pause.request.method).toBe('POST');
     pause.flush(null, { status: 204, statusText: 'No Content' });
     httpMock
-      .expectOne('api/admin/jobs')
+      .expectOne('api/v1/admin/jobs')
       .flush([{ ...syncJob, isPaused: true, nextExecution: null }]);
     fixture.detectChanges();
 
@@ -73,11 +73,13 @@ describe('JobsPage', () => {
     const { httpMock, button } = setup([Permission.JobsRead, Permission.JobsManage]);
 
     button('Run now')!.click();
-    httpMock.expectOne('api/admin/jobs/sync-user-profiles/trigger').flush(null);
-    httpMock.expectOne('api/admin/jobs').flush([syncJob]);
+    httpMock.expectOne('api/v1/admin/jobs/sync-user-profiles/trigger').flush(null);
+    httpMock.expectOne('api/v1/admin/jobs').flush([syncJob]);
 
     button('Remove')!.click();
-    expect(httpMock.expectOne('api/admin/jobs/sync-user-profiles').request.method).toBe('DELETE');
+    expect(httpMock.expectOne('api/v1/admin/jobs/sync-user-profiles').request.method).toBe(
+      'DELETE',
+    );
   });
 
   it('explains a rate-limited action', () => {
@@ -88,7 +90,7 @@ describe('JobsPage', () => {
 
     button('Restore all jobs')!.click();
     httpMock
-      .expectOne('api/admin/jobs/restore')
+      .expectOne('api/v1/admin/jobs/restore')
       .flush(null, { status: 429, statusText: 'Too Many Requests' });
     fixture.detectChanges();
 

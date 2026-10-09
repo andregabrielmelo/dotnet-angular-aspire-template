@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { Permission } from './permissions';
+import { API_V1 } from '../api/api-paths';
 
 export interface CurrentUser {
   id: number;
@@ -29,7 +30,7 @@ export class CurrentUserService {
       return of(this.profileSignal());
     }
 
-    return this.http.get<CurrentUser>('api/users/me').pipe(
+    return this.http.get<CurrentUser>(`${API_V1}/users/me`).pipe(
       catchError(() => of(null)),
       tap((profile) => {
         this.profileSignal.set(profile);
