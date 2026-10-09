@@ -20,7 +20,7 @@ namespace AppTemplate.BackendForFrontend.Tests;
 /// </summary>
 public class ProxyRoutingTests : IClassFixture<ProxyRoutingTests.ProxyFactory>
 {
-    private const string AccessToken = "test-access-token";
+    public const string AccessToken = "test-access-token";
     private readonly ProxyFactory _factory;
 
     public ProxyRoutingTests(ProxyFactory factory)
@@ -112,7 +112,7 @@ public class ProxyRoutingTests : IClassFixture<ProxyRoutingTests.ProxyFactory>
         }
     }
 
-    public sealed class ProxyFactory : BackendForFrontendFactory
+    public class ProxyFactory : BackendForFrontendFactory
     {
         public const string SignInPath = "/test/sign-in";
 

@@ -1,5 +1,6 @@
 ﻿using AppTemplate.BackendForFrontend.Configurations;
 using AppTemplate.ServiceDefaults;
+using AppTemplate.ServiceDefaults.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ var app = builder.Build();
 
 // First, so its OnStarting callback covers every response: errors, proxied ones, the SPA.
 app.UseSecurityHeaders();
+app.UseDefaultRequestLogging();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -66,7 +66,7 @@ Not run day-to-day, but useful when editing docs: requires the `hugo-book` theme
 
 Dependencies point inward; nothing below depends on something above it in this list:
 
-- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, the Mediator `LoggingBehavior` pipeline behavior. Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
+- **`AppTemplate.SharedKernel`** - base types shared by every layer: `EntityBase`/`EntityBase<TId>`, domain event interfaces + dispatch, the Mediator `LoggingBehavior` pipeline behavior, and the `[PersonalData]`/`[SecretData]` data classifications the logging pipeline redacts. Kept in-repo (not a separate NuGet package) since this template is meant to be self-contained.
 - **`AppTemplate.Core`** - the domain model: aggregates (`Aggregates/UserAggregate/`), value objects, specifications, interfaces Infrastructure implements. Near-zero external dependencies (`Ardalis.Specification`, `Vogen`).
 - **`AppTemplate.UseCases`** - CQRS commands/queries dispatched via `Mediator` (martinothamar/Mediator, source-generated - **not** MediatR). Depends on Core only; data access goes through `IRepository<T>` (`SharedKernel/IRepository.cs`, an `Ardalis.Specification` repository) and query-service interfaces defined here, implemented in Infrastructure.
 - **`AppTemplate.Infrastructure`** - EF Core + Npgsql (`Data/ApplicationDatabaseContext.cs`), email (MailKit), repository/query-service implementations. Anything talking to the outside world lives here.
@@ -119,6 +119,8 @@ Four test projects under `backend/tests/`, all xUnit (see ADR 006 for the reason
 Every route requires an authenticated user unless it calls `AllowAnonymous()`: there is an authorization fallback policy, and `EndpointAuthorizationTests` (functional) pins the list of anonymous routes, so update it when you deliberately make an endpoint public.
 
 Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Vogen](https://github.com/SteveDunn/Vogen) source-generated value objects with a `Validate` method enforcing invariants at construction. EF Core conversions for them are registered centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs` - add new value objects there, not per-entity. New entity IDs also need a `HasValueGenerator<VogenIdValueGenerator<...>>()` call in that entity's `IEntityTypeConfiguration` (see `UserConfiguration.cs`).
+
+Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks.
 
 Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter plus named per-endpoint policies (`RateLimitPolicies`), partitioned by validated `sub` or by client address. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development). Every request has a 30-second timeout (`RequestTimeoutConfigurations.cs`, 504 problem details). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`.
 
