@@ -94,6 +94,10 @@ Dependencies point inward:
 - Never inject a scoped service into a singleton.
 - Document any new configuration key, environment variable or AppHost parameter.
 
+## 9a. Health checks
+
+- Postgres gates readiness (`/health`, tag `ready`). Every other dependency is optional: tag its check `dependency` with `failureStatus: HealthStatus.Degraded`, and make the code that uses it fail open. Never tag a dependency `live`. Policy: `docs/content/best-practices.md`, Health checks.
+
 ## 10. Testing ([ADR 006](docs/content/architecture-decisions/adr-006-testing-strategy.md))
 
 - **Unit tests** (`AppTemplate.UnitTests`) cover domain rules and handler behavior with NSubstitute and no I/O. Use `TestCaches` for a real HybridCache.
