@@ -1,8 +1,4 @@
-﻿using AppTemplate.Core.ValueObjects;
-
-namespace AppTemplate.UseCases.Users.ForgotPassword;
-
-public sealed record ForgotPasswordCommand(EmailAddress Email) : ICommand<Result>;
+﻿namespace AppTemplate.UseCases.Users.ForgotPassword;
 
 public sealed class ForgotPasswordHandler(IPasswordResetService _passwordResetService)
     : ICommandHandler<ForgotPasswordCommand, Result>

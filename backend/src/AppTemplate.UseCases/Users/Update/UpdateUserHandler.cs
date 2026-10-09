@@ -5,16 +5,6 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Update;
 
-/// <param name="PhoneNumber">Leave empty to keep the current phone number.</param>
-/// <param name="PhoneCountryCode">Required with <paramref name="PhoneNumber"/>, e.g. "+55".</param>
-public record UpdateUserCommand(
-    UserId UserId,
-    UserName UserName,
-    string? PhoneNumber,
-    string? PhoneCountryCode,
-    string? PhoneExtension
-) : Mediator.ICommand<Result<UserDto>>;
-
 /// <summary>
 /// Resource-based authorization: anyone may update their own profile, while updating someone
 /// else's requires <see cref="Permission.UsersWrite"/>. This needs the loaded user, so it is

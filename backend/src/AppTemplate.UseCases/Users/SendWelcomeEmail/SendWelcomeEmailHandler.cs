@@ -13,8 +13,6 @@ public sealed class WelcomeEmailOptions
     public string Subject { get; set; } = "Welcome to AppTemplate";
 }
 
-public sealed record SendWelcomeEmailCommand(UserId UserId) : ICommand<Result>;
-
 /// <summary>
 /// Runs as a background job, so it must be idempotent: retries (or a duplicate enqueue) find
 /// <see cref="User.WelcomeEmailSentAtUtc"/> already set and do nothing. This is still

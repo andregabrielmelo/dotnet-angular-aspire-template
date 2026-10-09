@@ -13,7 +13,7 @@ Some reads happen far more often than the data changes. The SPA calls `GET /user
 
 ## Decision
 **HybridCache for application data** (UseCases):
-- `GetUserHandler` (by id) and `GetOrCreateCurrentUserHandler` (by the token's `sub`) read through `HybridCache.GetOrCreateAsync`. Concurrent misses share one database call (stampede protection), and "not found" is cached too.
+- `GetUserHandler` (by id) and `GetOrCreateCurrentUserHandler` (by the token's `sub`) read through `HybridCache.GetOrCreateAsync`. Concurrent misses share one database call (stampede protection). "Not found" is never cached (`HybridCacheExtensions.GetOrCreateExistingAsync`): otherwise any caller could fill the cache with ids that don't exist, and a newly created user would stay invisible until the cached miss expired.
 - Entries are `CachedUser`, a record of primitives. It serializes cleanly to the distributed cache and never exposes tracked entities or value objects.
 - **L1** is in-process memory (1 minute). **L2** is Redis (10 minutes) when Aspire provides the `cache` connection. The short L1 bounds how long another instance can serve a copy after an invalidation.
 - Caching happens *inside* the use case, which runs only after the endpoint's authorization. The cached value is the same for everyone.
@@ -30,6 +30,7 @@ Some reads happen far more often than the data changes. The SPA calls `GET /user
 - Every user entry and every cached user list carries the tag `users` (`CacheTags.Users`).
 - Creating, updating or deleting a user calls `ICacheInvalidator.InvalidateAsync("users")`. It is defined in UseCases and implemented in Web, where it calls `HybridCache.RemoveByTagAsync` and `IOutputCacheStore.EvictByTagAsync`.
 - User writes are rare compared to reads, so invalidating the whole tag is simpler and always correct compared to per-key bookkeeping.
+- Invalidation is **best-effort**. It runs after the write is saved, so a cache failure (Redis down) is logged, not thrown: a successful write never becomes a 500. Stale entries then live until they expire. Reads already tolerate an unreachable L2: HybridCache falls back to L1 and the database (`CacheOutageTests`).
 
 ## Consequences
 - Never apply `AuthorizedSharedResponsePolicy` to an endpoint whose response depends on the caller (such as `/users/me`). Use HybridCache inside the use case instead, keyed by what the result depends on.

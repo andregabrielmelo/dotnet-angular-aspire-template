@@ -4,9 +4,6 @@ using AppTemplate.UseCases.Jobs;
 
 namespace AppTemplate.UseCases.Users.SendWelcomeEmail;
 
-/// <returns>How many welcome emails were enqueued.</returns>
-public sealed record EnqueueMissedWelcomeEmailsCommand : ICommand<Result<int>>;
-
 /// <summary>
 /// Catches welcome emails whose enqueue was lost. Provisioning saves the user and then enqueues
 /// the email on Hangfire's own connection, so a crash or a storage error in between leaves a
