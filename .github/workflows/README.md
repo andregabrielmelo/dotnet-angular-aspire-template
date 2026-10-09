@@ -14,6 +14,16 @@ Runs on every PR and enforces the [Git workflow rules](../CONTRIBUTING.md#branch
 - **Gitflow branch:** `feature/*` may only target `develop`. Only `release/*` and `hotfix/*` may target `main`.
 - **Conventional Commits:** every non-merge commit in the PR must match `<type>[(scope)][!]: <description>`.
 
+## `secret-scan.yml`
+
+Runs [gitleaks](https://github.com/gitleaks/gitleaks) over the **whole git history** on every PR and on pushes to `main`/`develop`, and fails on anything that looks like a credential: cloud keys, private keys, tokens, connection strings with passwords. It scans every commit, not only the PR's, because a secret removed in a later commit is still leaked.
+- **CLI, not `gitleaks-action`.** It downloads the gitleaks release archive pinned by version and SHA-256 (`GITLEAKS_VERSION`/`GITLEAKS_SHA256`, from the release's `checksums.txt`). `gitleaks-action` needs a paid license for organization-owned repositories, which a project created from this template may well be. Dependabot can't bump a downloaded binary, so update both values together by hand.
+- **No allowlist.** The repository's history has no findings: the dev-only Keycloak and Postgres values are AppHost parameters or user secrets, never committed. If a finding is a genuine false positive, add its fingerprint (printed in the log) to a `.gitleaksignore` file. Never exempt whole paths or file types.
+- **If it catches a real secret, rotate it first.** Removing it from the branch doesn't un-leak it. Then rewrite the branch's history before it merges.
+- Run it locally with `gitleaks git .` ([install](https://github.com/gitleaks/gitleaks#installing)).
+
+The job is named `Secret scan` and has no path filter, so it always reports and is safe to require. It is not yet in the `main`/`develop` ruleset; add it there to block merges on findings.
+
 ## `codeql-analysis.yml`
 
 Monthly (and on-demand) security scan of both the C# backend and the TypeScript/Angular frontend using CodeQL's `security-and-quality` query suite. Not run on every push - it's slow and isn't meant to gate PRs.
