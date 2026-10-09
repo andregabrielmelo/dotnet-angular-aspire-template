@@ -16,6 +16,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 ## HTTP and authentication
 
 - Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The backend for frontend proxies them, so there is no base URL, no CORS and no tokens.
+- API request and response types come from the OpenAPI document. Alias them in the feature's model file (`export type UserRow = ApiSchema<'UserRecord'>`) instead of writing interfaces by hand, and never edit `core/api/api-types.ts`; regenerate it with `npm run api:generate`.
 - The browser never holds tokens. Session state comes from `CurrentUserService` and `/backend-for-frontend/user`. Login, register and logout are full-page redirects through `BROWSER_REDIRECT`.
 - `authGuard` and `permissionGuard` only shape the UI. The API enforces every permission itself, so never rely on a guard for security.
 - Never put secrets or environment-specific URLs in frontend code.

@@ -7,6 +7,19 @@ weight: 40
 
 The API is documented as an [OpenAPI](https://spec.openapis.org/oas/) document, generated automatically from the FastEndpoints route/DTO/validator metadata - not hand-written. There's nothing to keep in sync manually; add or change an endpoint and the document updates itself.
 
+## The committed contract and the Angular types
+
+The document is also **committed** as `backend/openapi/v1.json`, so a contract change shows up in code review:
+
+1. Change an endpoint, request or response.
+2. Run `scripts/export-openapi.sh` from the repo root. It starts the API briefly on a loopback port, before anything connects to Postgres, Redis or Keycloak, and writes the document. The output is byte-identical across runs.
+3. Run `npm run api:generate` in `frontend/`. [openapi-typescript](https://openapi-ts.dev/) writes `src/app/core/api/api-types.ts`.
+4. Commit both files.
+
+Feature services keep using Angular's `HttpClient`. They get **types**, not a generated client: models are aliases such as `ApiSchema<'UserRecord'>`, so a renamed or removed field becomes a compile error. CI regenerates both files and fails if either differs from what is committed.
+
+Non-nullable properties are marked `required` (`RequireNonNullablePropertiesSchemaProcessor`), so `id` is `number` and not `number | undefined`. Nullable ones stay optional.
+
 ## Browsing it
 
 All three are wired up in `MiddlewareConfigurations.UseAppMiddleware` and only mapped in the `Development` environment:

@@ -6,6 +6,7 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Typed API contract: `scripts/export-openapi.sh` writes the committed `backend/openapi/v1.json`, and `npm run api:generate` turns it into TypeScript types that the Angular feature models alias. CI fails when either is stale.
 - Secret scanning: `secret-scan.yml` runs gitleaks over the full git history on every PR and on pushes to `main`/`develop`.
 - `AppTemplate.ArchitectureTests`: enforces the layer dependency rules (project references and compiled type dependencies) and the endpoint and handler placement conventions. See ADR 006.
 - `AGENTS.md` and `.github/instructions/`: agent-neutral coding rules, which `CLAUDE.md` now defers to.

@@ -140,6 +140,8 @@ npm run build
 npm run test
 ```
 
+If you changed an endpoint, request or response, also run `scripts/export-openapi.sh` and `npm run api:generate`, and commit `backend/openapi/v1.json` and `frontend/src/app/core/api/api-types.ts`. CI fails when either is stale.
+
 Then:
 - Read the diff for unrelated changes, secrets and generated artifacts.
 - Update the docs: CLAUDE.md, this file, `docs/content/`, and an ADR for any significant decision.
