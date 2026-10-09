@@ -45,6 +45,27 @@ The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the
 
 Small cross-cutting pieces shared by every layer above Core (base entity/aggregate types, domain event dispatch, the Mediator logging pipeline behavior). Kept in-repo rather than as a separate NuGet package since this template is meant to be a single, self-contained starting point - split it out if you end up sharing it across multiple solutions.
 
+# When To Abstract
+
+Clean Architecture should make change easier. It shouldn't make a simple database lookup pass through five layers of indirection. The template *supports* each of these building blocks, but a feature only uses one when it buys something:
+
+| Building block | Add it when | Don't add it when |
+|---|---|---|
+| **Interface** | It sits on a layer boundary: UseCases or Core defines it and Infrastructure implements it (`ICurrentUser`, `IBackgroundJobScheduler`, `IEmailSender`), or a real second implementation exists | It only wraps EF Core, HybridCache or another framework API and adds nothing to it, or it exists only so a class can be mocked |
+| **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
+| **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
+| **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises none today, and that's fine |
+| **Mediator pipeline behavior** | It's a cross-cutting concern for every use case (`LoggingBehavior`) | It's logic for one feature. Put that in its handler |
+
+Every use case still goes through Mediator. That one seam stays uniform on purpose, so endpoints, jobs and tests all dispatch the same way.
+
+# Supported vs Required
+
+A template should *support* a capability without *requiring* every application to use it:
+
+- **Redis** is optional. Without a `cache` connection string, HybridCache and output caching fall back to in-memory (`CachingConfigurations.cs`), which is correct for a single instance.
+- Each production capability added later (transactional outbox, auditing, file storage, ETag concurrency, idempotency keys) is **opt-in**. It's registered through one `Add<Capability>()` extension, and the app builds and its tests pass without it. Its documentation has a "Removing it" section, and no feature references its types unless that feature uses it.
+
 # The Frontend
 
 Angular, kept deliberately unopinionated beyond an `auth` and `home` feature scaffold and a `core`/`shared` split. It never holds tokens. It is served through `AppTemplate.BackendForFrontend`, which owns the session cookie and proxies `/api` to the Web API, so no CORS is needed. See [ADR 007]({{< relref "architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak" >}}) and the [single-origin notes]({{< relref "notes/cors-and-proxy" >}}).
