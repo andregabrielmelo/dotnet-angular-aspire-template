@@ -6,6 +6,12 @@
   }
 
   <div class="flex items-center gap-3">
+    <a
+      routerLink="/profile"
+      class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium"
+    >
+      Edit profile
+    </a>
     @if (canManageUsers()) {
       <a
         routerLink="/users"

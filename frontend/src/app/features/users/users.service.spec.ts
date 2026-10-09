@@ -38,4 +38,16 @@ describe('UsersService', () => {
     expect(request.request.method).toBe('DELETE');
     httpMock.verify();
   });
+
+  it('updates a user by id', () => {
+    const { service, httpMock } = setup();
+
+    service.update(7, { name: 'Grace Hopper' }).subscribe();
+    const request = httpMock.expectOne('api/v1/users/7');
+    request.flush({ user: { id: 7, name: 'Grace Hopper' } });
+
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ name: 'Grace Hopper' });
+    httpMock.verify();
+  });
 });

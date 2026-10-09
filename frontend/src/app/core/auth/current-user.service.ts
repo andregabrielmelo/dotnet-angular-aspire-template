@@ -35,6 +35,11 @@ export class CurrentUserService {
     );
   }
 
+  /** Applies a change the API has confirmed (such as a rename) without reloading the profile. */
+  updateName(name: string): void {
+    this.profileSignal.update((profile) => (profile ? { ...profile, name } : profile));
+  }
+
   hasPermission(permission: Permission): boolean {
     return this.permissions().has(permission);
   }
