@@ -2,6 +2,7 @@
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
+using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -85,27 +86,12 @@ public class MeEndpoint(IMediator _mediator, ICurrentUser _currentUser)
         );
         var result = await _mediator.Send(command, cancellationToken);
 
-        return result.Status switch
-        {
-            ResultStatus.Ok => TypedResults.Ok(
-                new CurrentUserResponse(
-                    result.Value.Id.Value,
-                    result.Value.Name.Value,
-                    result.Value.Email.Value,
-                    _currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
-                )
-            ),
-            ResultStatus.Conflict => TypedResults.Problem(
-                title: "Conflict",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status409Conflict
-            ),
-            _ => TypedResults.Problem(
-                title: "Request failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: StatusCodes.Status400BadRequest
-            ),
-        };
+        return result.ToOkResult(user => new CurrentUserResponse(
+            user.Id.Value,
+            user.Name.Value,
+            user.Email.Value,
+            _currentUser.Permissions.Order(StringComparer.Ordinal).ToList()
+        ));
     }
 
     private static UserName? FirstValidUserName(params string?[] candidates)

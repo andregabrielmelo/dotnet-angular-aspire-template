@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Users.ForgotPassword;
+using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.AuthenticationFeatures;
 
@@ -62,20 +63,7 @@ public sealed class ForgotPasswordEndpoint(IMediator _mediator)
             cancellationToken
         );
 
-        return result.Status switch
-        {
-            ResultStatus.Ok => TypedResults.Accepted((string?)null),
-            ResultStatus.Unavailable => TypedResults.Problem(
-                title: "Service unavailable",
-                detail: "Password reset is temporarily unavailable. Please try again later.",
-                statusCode: StatusCodes.Status503ServiceUnavailable
-            ),
-            _ => TypedResults.Problem(
-                title: "Password reset failed",
-                detail: "The password reset email could not be sent. Please try again later.",
-                statusCode: StatusCodes.Status500InternalServerError
-            ),
-        };
+        return result.ToAcceptedResult();
     }
 }
 

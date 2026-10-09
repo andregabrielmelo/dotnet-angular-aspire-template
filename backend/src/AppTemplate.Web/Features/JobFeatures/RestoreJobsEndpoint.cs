@@ -1,5 +1,6 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs.Restore;
+using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
 
@@ -31,14 +32,6 @@ public class RestoreJobsEndpoint(IMediator _mediator)
     )
     {
         var result = await _mediator.Send(new RestoreJobsCommand(), cancellationToken);
-        return result.IsSuccess
-            ? TypedResults.NoContent()
-            : TypedResults.Problem(
-                title: "Restore failed",
-                detail: string.Join("; ", result.Errors),
-                statusCode: result.Status == ResultStatus.Unavailable
-                    ? StatusCodes.Status503ServiceUnavailable
-                    : StatusCodes.Status500InternalServerError
-            );
+        return result.ToNoContentResult();
     }
 }

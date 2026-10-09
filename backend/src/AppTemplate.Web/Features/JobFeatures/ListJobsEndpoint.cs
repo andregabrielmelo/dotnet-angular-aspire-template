@@ -6,7 +6,7 @@ using AppTemplate.Web.Extensions;
 namespace AppTemplate.Web.Features.JobFeatures;
 
 public class ListJobsEndpoint(IMediator _mediator)
-    : EndpointWithoutRequest<Ok<IReadOnlyList<RecurringJobResponse>>>
+    : EndpointWithoutRequest<Results<Ok<IReadOnlyList<RecurringJobResponse>>, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -24,12 +24,12 @@ public class ListJobsEndpoint(IMediator _mediator)
         Tags(JobEndpoints.Tag);
     }
 
-    public override async Task<Ok<IReadOnlyList<RecurringJobResponse>>> ExecuteAsync(
-        CancellationToken cancellationToken
-    )
+    public override async Task<
+        Results<Ok<IReadOnlyList<RecurringJobResponse>>, ProblemHttpResult>
+    > ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new ListJobsQuery(), cancellationToken);
-        return result.ToOkOnlyResult<
+        return result.ToOkResult<
             IReadOnlyList<RecurringJobDto>,
             IReadOnlyList<RecurringJobResponse>
         >(jobs => jobs.Select(RecurringJobResponse.From).ToList());

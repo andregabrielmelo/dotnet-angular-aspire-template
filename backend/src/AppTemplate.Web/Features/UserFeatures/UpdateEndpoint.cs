@@ -28,7 +28,7 @@ public sealed record UpdateUserResponse(UserRecord User);
 public class UpdateEndpoint(IMediator _mediator)
     : Endpoint<
         UpdateUserRequest,
-        Results<Ok<UpdateUserResponse>, NotFound, ProblemHttpResult>,
+        Results<Ok<UpdateUserResponse>, ProblemHttpResult>,
         UpdateUserMapper
     >
 {
@@ -72,9 +72,10 @@ public class UpdateEndpoint(IMediator _mediator)
         );
     }
 
-    public override async Task<
-        Results<Ok<UpdateUserResponse>, NotFound, ProblemHttpResult>
-    > ExecuteAsync(UpdateUserRequest request, CancellationToken cancellationToken)
+    public override async Task<Results<Ok<UpdateUserResponse>, ProblemHttpResult>> ExecuteAsync(
+        UpdateUserRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var command = new UpdateUserCommand(
             UserId.From(request.Id),
@@ -85,7 +86,7 @@ public class UpdateEndpoint(IMediator _mediator)
         );
         var result = await _mediator.Send(command, cancellationToken);
 
-        return result.ToUpdateResult<UserDto, UpdateUserResponse>(Map.FromEntity);
+        return result.ToOkResult<UserDto, UpdateUserResponse>(Map.FromEntity);
     }
 }
 
