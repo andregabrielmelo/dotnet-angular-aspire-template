@@ -28,7 +28,7 @@ public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factor
         var email = $"ada-{Guid.NewGuid():N}@example.com";
 
         var response = await CreateAnonymousClient()
-            .PostAsJsonAsync("/password-reset", new ForgotPasswordRequest { Email = email });
+            .PostAsJsonAsync("/v1/password-reset", new ForgotPasswordRequest { Email = email });
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         Assert.Contains(email, factory.PasswordResetService.RequestedEmails);
@@ -42,7 +42,7 @@ public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factor
             e.Value == email ? Result.NotFound() : Result.Success();
 
         var response = await CreateAnonymousClient()
-            .PostAsJsonAsync("/password-reset", new ForgotPasswordRequest { Email = email });
+            .PostAsJsonAsync("/v1/password-reset", new ForgotPasswordRequest { Email = email });
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
@@ -52,7 +52,7 @@ public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factor
     {
         var response = await CreateAnonymousClient()
             .PostAsJsonAsync(
-                "/password-reset",
+                "/v1/password-reset",
                 new ForgotPasswordRequest { Email = "not-an-email" }
             );
 
@@ -67,11 +67,11 @@ public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factor
 
         for (var i = 0; i < ForgotPasswordEndpoint.RequestsPerWindow; i++)
         {
-            var allowed = await client.PostAsJsonAsync("/password-reset", request);
+            var allowed = await client.PostAsJsonAsync("/v1/password-reset", request);
             Assert.Equal(HttpStatusCode.Accepted, allowed.StatusCode);
         }
 
-        var throttled = await client.PostAsJsonAsync("/password-reset", request);
+        var throttled = await client.PostAsJsonAsync("/v1/password-reset", request);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
     }

@@ -22,7 +22,7 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
         (
             await factory
                 .CreateAuthenticatedClient(subject)
-                .GetFromJsonAsync<CurrentUserResponse>("/users/me")
+                .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me")
         )!;
 
     private async Task RunWelcomeEmailJobAsync(int userId)

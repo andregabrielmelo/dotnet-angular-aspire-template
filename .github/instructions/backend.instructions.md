@@ -22,6 +22,7 @@ public class GetByIdEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users/{id}");
+        Version(ApiVersions.V1);                  // served at /v1/users/{id}; required (ADR 015)
         Policies(Permission.UsersRead);           // or AllowAnonymous(), always explicit
         Summary(s => { /* summary, examples, one line per status code */ });
         Tags("Users");

@@ -49,7 +49,7 @@ public static class ReverseProxyConfigurations
                 Order = -1,
                 Match = new RouteMatch
                 {
-                    Path = "/api/password-reset",
+                    Path = "/api/v1/password-reset",
                     Methods = [HttpMethods.Post],
                 },
             },

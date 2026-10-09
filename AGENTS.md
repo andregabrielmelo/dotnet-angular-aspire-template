@@ -33,7 +33,7 @@ Dependencies point inward:
 ## 3. API endpoints ([ADR 003](docs/content/architecture-decisions/adr-003-fastendpoints-mediator.md))
 
 - FastEndpoints with the REPR pattern only. No MVC controllers and no Minimal API handlers for feature endpoints.
-- One endpoint class per HTTP operation, under `Web/Features/<Feature>Features/`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
+- One endpoint class per HTTP operation, under `Web/Features/<Feature>Features/`. Every endpoint calls `Version(ApiVersions.V1)` right after its route ([ADR 015](docs/content/architecture-decisions/adr-015-api-versioning.md)). A breaking change gets a new `Version(2)` class next to the v1 one; never edit a released contract in place. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
 - Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs` (`ToOkResult`, `ToCreatedResult`, `ToNoContentResult`, `ToAcceptedResult`). The return type is `Results<Ok<T>, ProblemHttpResult>` (or `Created`, `NoContent`, `Accepted`). No business logic, EF Core, cache calls or external SDKs in endpoints.
 - Every error is an RFC 9457 problem details response with a `traceId` ([ADR 014](docs/content/architecture-decisions/adr-014-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.

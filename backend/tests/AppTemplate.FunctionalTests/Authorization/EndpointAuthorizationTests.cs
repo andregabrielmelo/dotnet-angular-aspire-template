@@ -15,7 +15,7 @@ namespace AppTemplate.FunctionalTests.Authorization;
 public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    private static readonly string[] ExpectedAnonymousRoutes = ["POST /password-reset"];
+    private static readonly string[] ExpectedAnonymousRoutes = ["POST /v1/password-reset"];
 
     private IEnumerable<RouteEndpoint> RouteEndpoints() =>
         factory

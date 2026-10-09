@@ -1,5 +1,6 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs.Remove;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
@@ -10,6 +11,7 @@ public class RemoveJobEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Delete("/admin/jobs/{JobId}");
+        Version(ApiVersions.V1);
         Policies(Permission.JobsManage);
         Throttle(hitLimit: JobEndpoints.MutationsPerMinute, durationSeconds: 60);
 

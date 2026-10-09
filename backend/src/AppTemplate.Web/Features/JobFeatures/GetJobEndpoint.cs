@@ -1,5 +1,6 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs.Get;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
@@ -10,6 +11,7 @@ public class GetJobEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Get("/admin/jobs/{JobId}");
+        Version(ApiVersions.V1);
         Policies(Permission.JobsRead);
 
         Summary(s =>

@@ -112,7 +112,7 @@ describe('AuthService', () => {
   it('requestPasswordReset() posts the email to the API', () => {
     service.requestPasswordReset('ada@example.com').subscribe();
 
-    const request = httpMock.expectOne('api/password-reset');
+    const request = httpMock.expectOne('api/v1/password-reset');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({ email: 'ada@example.com' });
     request.flush(null, { status: 202, statusText: 'Accepted' });

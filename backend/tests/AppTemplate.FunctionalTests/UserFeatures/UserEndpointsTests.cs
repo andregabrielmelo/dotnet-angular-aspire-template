@@ -20,7 +20,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         var me = await factory
             .CreateAuthenticatedClient(subject, permissions)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
+            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
         return me!;
     }
 
@@ -29,7 +29,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_WithoutAuthentication_ReturnsUnauthorized()
     {
-        var response = await factory.CreateClient().GetAsync("/users");
+        var response = await factory.CreateClient().GetAsync("/v1/users");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -53,8 +53,8 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         var client = factory.CreateAuthenticatedClient(NewSubject());
 
-        var first = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
-        var second = await client.GetFromJsonAsync<CurrentUserResponse>("/users/me");
+        var first = await client.GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
+        var second = await client.GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
 
         Assert.Equal(first!.Id, second!.Id);
     }
@@ -72,7 +72,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_WithoutUsersRead_IsForbidden()
     {
-        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/users");
+        var response = await factory.CreateAuthenticatedClient(NewSubject()).GetAsync("/v1/users");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -82,7 +82,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync("/users");
+            .GetAsync("/v1/users");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -94,7 +94,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject())
-            .GetAsync($"/users/{me.Id}");
+            .GetAsync($"/v1/users/{me.Id}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -106,7 +106,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync($"/users/{me.Id}");
+            .GetAsync($"/v1/users/{me.Id}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -116,7 +116,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync("/users/999999");
+            .GetAsync("/v1/users/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -128,12 +128,12 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead, Permission.UsersWrite)
-            .DeleteAsync($"/users/{target.Id}");
+            .DeleteAsync($"/v1/users/{target.Id}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var stillThere = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .GetAsync($"/users/{target.Id}");
+            .GetAsync($"/v1/users/{target.Id}");
         Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
     }
 
@@ -144,7 +144,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersDelete)
-            .DeleteAsync($"/users/{target.Id}");
+            .DeleteAsync($"/v1/users/{target.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -159,7 +159,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(subject)
-            .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed Myself" });
+            .PutAsJsonAsync($"/v1/users/{me.Id}", new { id = me.Id, name = "Renamed Myself" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -173,7 +173,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         var response = await factory
             .CreateAuthenticatedClient(subject)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/v1/users/{me.Id}",
                 new
                 {
                     name = "Ada Lovelace",
@@ -196,7 +196,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         var response = await factory
             .CreateAuthenticatedClient(subject)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/v1/users/{me.Id}",
                 new { name = "Ada Lovelace", phoneNumber = "11 98765 4321" }
             );
 
@@ -220,7 +220,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         var response = await factory
             .CreateAuthenticatedClient(subject)
             .PutAsJsonAsync(
-                $"/users/{me.Id}",
+                $"/v1/users/{me.Id}",
                 new
                 {
                     name = "Ada Lovelace",
@@ -242,7 +242,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(subject)
-            .PutAsJsonAsync($"/users/{me.Id}", new { id = other.Id, name = "Renamed Myself" });
+            .PutAsJsonAsync($"/v1/users/{me.Id}", new { id = other.Id, name = "Renamed Myself" });
         var body = await response.Content.ReadFromJsonAsync<UpdateUserResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -256,7 +256,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersRead)
-            .PutAsJsonAsync($"/users/{target.Id}", new { id = target.Id, name = "Hijacked" });
+            .PutAsJsonAsync($"/v1/users/{target.Id}", new { id = target.Id, name = "Hijacked" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -269,7 +269,7 @@ public class UserEndpointsTests(AppTemplateWebApplicationFactory factory)
         var response = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
             .PutAsJsonAsync(
-                $"/users/{target.Id}",
+                $"/v1/users/{target.Id}",
                 new { id = target.Id, name = "Renamed By Admin" }
             );
 

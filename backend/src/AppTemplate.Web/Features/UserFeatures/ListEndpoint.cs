@@ -35,6 +35,7 @@ public class ListEndpoint(IMediator mediator)
     public override void Configure()
     {
         Get("/users");
+        Version(ApiVersions.V1);
         Policies(Permission.UsersRead);
         // The list is the same for everyone allowed to read it; user writes evict it.
         Options(x => x.CacheOutput(CachingConfigurations.UsersListPolicy));

@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RecurringJob, RecurringJobDetail } from './jobs.model';
+import { API_V1 } from '../../core/api/api-paths';
 
-const BASE = 'api/admin/jobs';
+const BASE = `${API_V1}/admin/jobs`;
 
 /** The recurring-job admin API (reached through the backend for frontend). */
 @Injectable({ providedIn: 'root' })

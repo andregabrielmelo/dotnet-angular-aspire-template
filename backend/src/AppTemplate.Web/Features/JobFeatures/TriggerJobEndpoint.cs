@@ -1,5 +1,6 @@
 ﻿using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs.Trigger;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.JobFeatures;
@@ -10,6 +11,7 @@ public class TriggerJobEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Post("/admin/jobs/{JobId}/trigger");
+        Version(ApiVersions.V1);
         Policies(Permission.JobsManage);
         Throttle(hitLimit: JobEndpoints.MutationsPerMinute, durationSeconds: 60);
 

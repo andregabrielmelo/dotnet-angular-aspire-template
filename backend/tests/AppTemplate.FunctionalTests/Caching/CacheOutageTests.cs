@@ -54,16 +54,16 @@ public class CacheOutageTests(AppTemplateWebApplicationFactory factory)
     {
         var app = WithBrokenDistributedCache();
 
-        var me = await CreateClient(app, NewSubject()).GetAsync("/users/me");
+        var me = await CreateClient(app, NewSubject()).GetAsync("/v1/users/me");
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
         var user = await me.Content.ReadFromJsonAsync<CurrentUserResponse>();
 
         var read = await CreateClient(app, NewSubject(), Permission.UsersRead)
-            .GetAsync($"/users/{user!.Id}");
+            .GetAsync($"/v1/users/{user!.Id}");
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
 
         var update = await CreateClient(app, NewSubject(), Permission.UsersWrite)
-            .PutAsJsonAsync($"/users/{user.Id}", new { id = user.Id, name = "Renamed" });
+            .PutAsJsonAsync($"/v1/users/{user.Id}", new { id = user.Id, name = "Renamed" });
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
     }
 
@@ -72,10 +72,10 @@ public class CacheOutageTests(AppTemplateWebApplicationFactory factory)
     {
         var app = WithBrokenDistributedCache();
         var user = await CreateClient(app, NewSubject())
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
+            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
 
         var delete = await CreateClient(app, NewSubject(), Permission.UsersDelete)
-            .DeleteAsync($"/users/{user!.Id}");
+            .DeleteAsync($"/v1/users/{user!.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
     }

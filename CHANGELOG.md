@@ -67,6 +67,7 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Changed
 
+- **Breaking:** the API is versioned. Every route moved under `/v1` (`GET /v1/users`, `POST /v1/password-reset`, ...), and the browser calls `/api/v1/...` through the backend for frontend. Endpoints declare `Version(ApiVersions.V1)`, and a test fails for one that doesn't. See ADR 015.
 - Frontend:
   - `npm run format` and `npm run format:check` replace the hand-typed prettier commands, and CI uses them.
   - `strict` and `strictTemplates` are now explicit; TypeScript 6 and Angular 22 already applied them by default.
