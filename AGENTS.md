@@ -36,7 +36,7 @@ Dependencies point inward:
 - One endpoint class per HTTP operation, under `Web/Features/<Feature>Features/`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
 - Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs`. No business logic, EF Core, cache calls or external SDKs in endpoints.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.
-- Every endpoint is authenticated by default. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 010](docs/content/architecture-decisions/adr-010-permission-based-authorization.md)).
+- Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 010](docs/content/architecture-decisions/adr-010-permission-based-authorization.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
 - Sensitive or expensive operations use `Throttle(...)` (see `ForgotPasswordEndpoint`).
@@ -98,6 +98,7 @@ Dependencies point inward:
   - Authenticate with `factory.CreateAuthenticatedClient(sub, Permission.X, ...)`.
   - Use the fakes the factory exposes: `PasswordResetService`, `EmailSender`, `TestRecurringJob`.
 - **Backend for frontend tests** (`AppTemplate.BackendForFrontend.Tests`) cover session endpoints and proxy rules.
+- **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
 ## 11. Frontend (`frontend/`)

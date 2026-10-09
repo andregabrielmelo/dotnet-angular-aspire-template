@@ -6,6 +6,9 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- `AppTemplate.ArchitectureTests`: enforces the layer dependency rules (project references and compiled type dependencies) and the endpoint and handler placement conventions. See ADR 006.
+- `AGENTS.md` and `.github/instructions/`: agent-neutral coding rules, which `CLAUDE.md` now defers to.
+
 - Job management, structured after netrock's Jobs feature:
   - Recurring jobs are `IRecurringJobDefinition`s, scheduled at startup and run through a DI-activated `RecurringJobRunner`.
   - Admins can list, trigger, pause/resume (persisted, and survives restarts), remove and restore jobs through `/admin/jobs` (`jobs:read`, `jobs:manage`) and the new Angular `/jobs` pages.
@@ -43,6 +46,8 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Fixed
 
+- **Security:** FastEndpoints' `GET /_test_url_cache_` route, which lists every route and endpoint type name, was reachable anonymously in every environment. An authorization fallback policy now requires authentication for any route that declares no authorization. See ADR 010.
+- `AppTemplate.BackendForFrontend.Tests` was missing from the solution, so CI never ran it.
 - User lookups no longer cache "not found", so requests for ids that don't exist can't fill the cache.
 - A Redis outage turned successful user writes into 500s, because cache invalidation threw after the database write. Invalidation is now best-effort and logs the failure.
 - `MimeKitEmailSender` disconnected with an already-cancelled token, so every send threw after delivering the message. It now takes a `CancellationToken` and no longer logs recipient addresses.
