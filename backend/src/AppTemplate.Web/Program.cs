@@ -31,12 +31,22 @@ builder
             s.Title = "AppTemplate API";
             s.Version = "v1";
             s.Description = "REST API for AppTemplate.";
+            s.SchemaSettings.SchemaProcessors.Add(
+                new RequireNonNullablePropertiesSchemaProcessor()
+            );
         };
     });
 
 var app = builder.Build();
 
 await app.UseAppMiddleware();
+
+// `--OpenApi:ExportPath=<file>` writes the OpenAPI document and exits, before anything below
+// needs a database or other services (see OpenApiExport).
+if (await app.TryExportOpenApiAsync())
+{
+    return;
+}
 await app.StartDatabase(); // decides for itself: Development, or Database:ApplyMigrationsOnStartup
 
 await app.UseJobSchedulingAsync();
