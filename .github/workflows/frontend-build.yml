@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'frontend/**'
+      - 'backend/openapi/**' # the API contract the frontend's types are generated from
       - '.github/workflows/frontend-build.yml'
   pull_request: # no paths filter: the gate job below must report on every PR (see README)
   workflow_dispatch:
@@ -47,7 +48,7 @@ jobs:
           fi
           # Assign first so an API error fails the job instead of reading as "nothing changed".
           files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
-          if grep -Eq '^(frontend/|\.github/workflows/frontend-build\.yml$)' <<< "$files"; then
+          if grep -Eq '^(frontend/|backend/openapi/|\.github/workflows/frontend-build\.yml$)' <<< "$files"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "No frontend changes in this PR - skipping the build."
@@ -84,6 +85,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # The API types are generated from backend/openapi/v1.json; fail if they weren't
+      # regenerated after the contract changed.
+      - name: Check the generated API types are current
+        run: |
+          npm run api:generate
+          git diff --exit-code -- src/app/core/api/api-types.ts || {
+            echo "::error::src/app/core/api/api-types.ts is stale. Run npm run api:generate in frontend/ and commit it."
+            exit 1
+          }
 
       - name: Check formatting (prettier)
         run: npm run format:check

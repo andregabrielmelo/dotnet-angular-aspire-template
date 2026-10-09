@@ -39,6 +39,8 @@ Migrations apply automatically on startup only in the `Development` environment 
 
 There is no pre-commit hook: run `dotnet csharpier format .` before committing (CI runs `dotnet csharpier check .`). Format again after generating code, for example EF migrations.
 
+The API contract is committed: after changing an endpoint, request or response, run `scripts/export-openapi.sh` (from the repo root; writes `backend/openapi/v1.json` without needing any services) and then `npm run api:generate` in `frontend/` (writes `src/app/core/api/api-types.ts`). CI fails if either file is stale.
+
 ### Frontend (Angular)
 
 ```bash
@@ -48,6 +50,7 @@ npm run build
 npm run test                                       # vitest, runs once (not watch mode)
 npm run lint                                       # eslint (@angular-eslint), CI-enforced
 npm run format:check                               # prettier check (CI-enforced); npm run format to fix
+npm run api:generate                               # regenerate API types from backend/openapi/v1.json
 ```
 
 ### Docs site (Hugo, in `docs/`)

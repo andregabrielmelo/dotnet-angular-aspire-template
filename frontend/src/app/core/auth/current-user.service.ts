@@ -3,13 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { Permission } from './permissions';
 import { API_V1 } from '../api/api-paths';
+import { ApiSchema } from '../api/api-schema';
 
-export interface CurrentUser {
-  id: number;
-  name: string;
-  email: string;
-  permissions: string[];
-}
+export type CurrentUser = ApiSchema<'CurrentUserResponse'>;
 
 /**
  * The signed-in user's application profile and permissions, from GET /api/users/me (which
