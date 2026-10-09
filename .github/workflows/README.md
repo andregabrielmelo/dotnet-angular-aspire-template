@@ -2,11 +2,11 @@
 
 ## `backend-build.yml`
 
-Restores (`--locked-mode`, against the committed `packages.lock.json` files), format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. NuGet packages are cached by `setup-dotnet`, keyed on the lock files' hash. Triggers on pushes to `main`/`develop` and on PRs that touch `backend/**`. `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against a real Postgres started with [Testcontainers](https://dotnet.testcontainers.org/). Hosted Windows and macOS runners can't run Linux containers, so only the Linux job runs the whole suite; the others skip tests marked `[Trait("Category", "RequiresDocker")]` (`--filter "Category!=RequiresDocker"`).
+Restores (`--locked-mode`, against the committed `packages.lock.json` files), format-checks (`dotnet csharpier check`), builds, and tests (`dotnet test`) the backend solution on Windows, Linux, and macOS. NuGet packages are cached by `setup-dotnet`, keyed on the lock files' hash. Triggers on pushes to `main`/`develop` that touch `backend/**` and on every PR. On a PR, the build only runs if it touches `backend/**`, but the `Backend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)). `AppTemplate.UnitTests` runs against Core/UseCases with no external dependencies; `AppTemplate.FunctionalTests` exercises the full HTTP -> FastEndpoints -> Mediator -> EF Core pipeline against a real Postgres started with [Testcontainers](https://dotnet.testcontainers.org/). Hosted Windows and macOS runners can't run Linux containers, so only the Linux job runs the whole suite; the others skip tests marked `[Trait("Category", "RequiresDocker")]` (`--filter "Category!=RequiresDocker"`).
 
 ## `frontend-build.yml`
 
-Installs, format-checks (`prettier --check`), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes to `main`/`develop` and on PRs that touch `frontend/**`.
+Installs, format-checks (`prettier --check`), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
 
 ## `pr-conventions.yml`
 
@@ -30,6 +30,21 @@ Builds the `docs/` Hugo site (using the `hugo-book` theme, fetched fresh each ru
 - **Pinned actions:** every `uses:` points at a full commit SHA with the version as a trailing comment (e.g. `actions/checkout@<sha> # v7.0.1`). Tags are mutable and SHAs aren't. Dependabot (`.github/dependabot.yml`, `github-actions` ecosystem, grouped into one PR against `develop`) keeps both the SHA and the comment current, so don't hand-edit one without the other.
 - **`persist-credentials: false`** on every checkout, since no workflow pushes back to the repo. Without it, the token stays in `.git/config` for later steps.
 - **`timeout-minutes`** on every job, so a hung job doesn't burn the 6-hour default.
+
+## Required checks and the gate jobs
+
+The `main` and `develop` ruleset requires exactly four checks: `Frontend CI`, `Backend CI`, `Gitflow branch`, and `Conventional Commits`. Don't add the matrix build jobs (`Build & Test (Node 22.x)`, `Build (.NET 10, ubuntu-latest)`, ...) to the ruleset, for two reasons:
+
+- **Path filters and required checks don't mix.** A workflow skipped by an `on.pull_request.paths` filter never reports a status. A required check from it stays at "Expected — Waiting for status to be reported" forever, so every backend-only PR would be blocked on the frontend check, and vice versa.
+- **Skipped matrix jobs report the wrong name.** When a matrix job is skipped by `if:`, GitHub reports it under its unexpanded name (`Build & Test (Node ${{ matrix.node-version }})`), which never matches the required name.
+
+Each build workflow therefore has three jobs:
+
+1. **`changes`** (`Detect changes`) lists the PR's files through the API and outputs whether anything relevant changed. On `push` (already path-filtered) and `workflow_dispatch` it always says yes.
+2. **`build`** is the real (matrix) build. It runs only when `changes` says so.
+3. **`gate`** (`Frontend CI` / `Backend CI`) always runs. It passes when the build succeeded or was skipped, and fails when the build failed or was cancelled. This is the one check the ruleset requires.
+
+A new build workflow that should gate PRs must follow the same pattern and add its gate job's name to the ruleset. Changing a matrix (adding Node 24, another OS) needs no ruleset change.
 
 ## NuGet lock files
 
