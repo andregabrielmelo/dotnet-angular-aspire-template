@@ -6,6 +6,9 @@ public static class MiddlewareConfigurations
 {
     public static async Task<IApplicationBuilder> UseAppMiddleware(this WebApplication app)
     {
+        // First, so its OnStarting callback also covers error and status-code-page responses.
+        app.UseApiSecurityHeaders();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
