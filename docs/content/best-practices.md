@@ -65,10 +65,24 @@ Explicit guidelines for projects built from this template, so every project that
 - **Request timeouts.** Every request gets 30 seconds (`RequestTimeouts:Default`), after which `HttpContext.RequestAborted` is cancelled and the client gets a 504 problem details response. Pass the `CancellationToken` through to EF Core and HttpClient calls so the work actually stops. An endpoint that waits on an external service with retries opts into `RequestTimeoutPolicies.ExternalCall` (45 seconds). Timeouts are disabled while a debugger is attached.
 - **A timeout doesn't undo anything.** If the transaction already committed, or an email or HTTP call already went out, it stays done even though the client got a 504. Make writes safe to retry, or make them idempotent.
 
+## Health checks
+
+- **Policy: Postgres is required; Redis (and later file storage) is optional.** Without Postgres an instance can't serve anything. Without Redis it serves everything, slightly slower, from its in-memory cache and Postgres.
+- **Three probes**, mapped by `MapDefaultEndpoints()` in every environment, anonymous, excluded from rate limiting, tracing and request logs (Verbose). They answer only with `Healthy`/`Degraded`/`Unhealthy`:
+
+  | Probe | Checks (tag) | Fails with | Use it for |
+  |---|---|---|---|
+  | `/alive` | the process itself (`live`) | 503 | liveness: restart the instance |
+  | `/health` | required dependencies (`ready`): Postgres | 503 | readiness: stop sending traffic |
+  | `/health/dependencies` | optional dependencies (`dependency`): Redis | never (200, `Degraded`) | dashboards and alerts |
+
+- **Adding a dependency:** tag its check `ready` only if the app truly can't serve without it; anything else is `dependency` with `failureStatus: HealthStatus.Degraded`, and the code that uses it must fail open (see `Web/Caching/FailOpenRedis.cs`). Never put a dependency in `live`: a database outage would restart every instance and make things worse.
+- Give each check a short timeout (Postgres has 5 seconds), so a hanging dependency can't hang the probe.
+- Aspire's client integrations add their own, untagged health checks, which would gate `/health`. Turn them off (`settings.DisableHealthChecks = true`) and register a tagged check instead, as `CachingConfigurations` does for Redis.
+
 ## .NET Aspire
 
 - `AppTemplate.ServiceDefaults` (wired into `Web` via `AddServiceDefaults()`) is where cross-cutting concerns (OpenTelemetry, health checks, service discovery, retries) belong - once for the whole app, not duplicated per-service.
-- `/health` and `/alive` (from `MapDefaultEndpoints()`) are meant for Development/orchestration, not public exposure - if you ever run this outside Aspire in a way that exposes them, gate them behind network policy or authz.
 - The AppHost is a local-orchestration and manifest-generation tool (see [ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})) - it is not itself a production runtime.
 
 ## PostgreSQL & migrations

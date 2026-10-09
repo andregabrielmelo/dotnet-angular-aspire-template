@@ -15,7 +15,15 @@ namespace AppTemplate.FunctionalTests.Authorization;
 public class EndpointAuthorizationTests(AppTemplateWebApplicationFactory factory)
     : IClassFixture<AppTemplateWebApplicationFactory>
 {
-    private static readonly string[] ExpectedAnonymousRoutes = ["POST /v1/password-reset"];
+    private static readonly string[] ExpectedAnonymousRoutes =
+    [
+        "POST /v1/password-reset",
+        // Health probes (ServiceDefaults.MapDefaultEndpoints): orchestrators call them without
+        // credentials, and they answer with only a status word.
+        "ANY /alive",
+        "ANY /health",
+        "ANY /health/dependencies",
+    ];
 
     private IEnumerable<RouteEndpoint> RouteEndpoints() =>
         factory

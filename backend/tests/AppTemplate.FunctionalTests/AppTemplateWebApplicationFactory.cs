@@ -28,7 +28,8 @@ namespace AppTemplate.FunctionalTests;
 /// </summary>
 public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private string? _connectionString;
+    /// <summary>The app's Postgres connection string, set by <see cref="InitializeAsync"/>.</summary>
+    protected string? ConnectionString { get; set; }
 
     /// <summary>Replaces the Keycloak Admin API client; inspect or reconfigure it per test.</summary>
     public FakePasswordResetService PasswordResetService { get; } = new();
@@ -45,7 +46,7 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
 
         builder.UseSetting(
             "ConnectionStrings:apptemplate",
-            _connectionString
+            ConnectionString
                 ?? throw new InvalidOperationException(
                     "The factory is used before InitializeAsync - use it as an xUnit fixture."
                 )
@@ -100,9 +101,9 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
     }
 
     /// <summary>Creates this host's database (by running the migrations) before any test uses it.</summary>
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
-        _connectionString = await PostgresTestDatabase.NewDatabaseConnectionStringAsync();
+        ConnectionString = await PostgresTestDatabase.NewDatabaseConnectionStringAsync();
 
         using var scope = Services.CreateScope();
         await scope

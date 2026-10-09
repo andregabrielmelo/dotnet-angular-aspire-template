@@ -1,6 +1,7 @@
 using AppTemplate.ServiceDefaults.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -18,6 +19,7 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    private const string DependenciesEndpointPath = "/health/dependencies";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
@@ -109,31 +111,68 @@ public static class Extensions
     {
         builder
             .Services.AddHealthChecks()
-            // Add a default liveness check to ensure app is responsive
-            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+            // The process is up and responsive: nothing else belongs in liveness, or a
+            // database outage would get every instance restarted.
+            .AddCheck("self", () => HealthCheckResult.Healthy(), [HealthCheckTags.Live]);
 
         return builder;
     }
 
+    /// <summary>
+    /// Three probes, mapped in every environment. They are anonymous, excluded from rate
+    /// limiting and tracing, and answer with only the status word, so they reveal nothing about
+    /// the dependencies themselves:
+    /// <list type="bullet">
+    /// <item><c>/alive</c> (liveness): the process is up. Failing means "restart me".</item>
+    /// <item><c>/health</c> (readiness): every required dependency (<see cref="HealthCheckTags.Ready"/>,
+    /// such as Postgres) is reachable. Failing (503) means "send no traffic here".</item>
+    /// <item><c>/health/dependencies</c>: optional dependencies (<see cref="HealthCheckTags.Dependency"/>,
+    /// such as Redis). Always 200, reporting Degraded when one is down, so an orchestrator
+    /// never pulls an instance that can still serve without them.</item>
+    /// </list>
+    /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // Adding health checks endpoints to applications in non-development environments has security implications.
-        // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
-        if (app.Environment.IsDevelopment())
-        {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
-            // Anonymous explicitly: an app with an authorization fallback policy would otherwise
-            // require a signed-in user for these probes.
-            app.MapHealthChecks(HealthEndpointPath).AllowAnonymous();
+        app.MapHealthChecks(
+                AlivenessEndpointPath,
+                new HealthCheckOptions { Predicate = r => r.Tags.Contains(HealthCheckTags.Live) }
+            )
+            .AllowAnonymous();
 
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks(
-                    AlivenessEndpointPath,
-                    new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") }
-                )
-                .AllowAnonymous();
-        }
+        app.MapHealthChecks(
+                HealthEndpointPath,
+                new HealthCheckOptions { Predicate = r => r.Tags.Contains(HealthCheckTags.Ready) }
+            )
+            .AllowAnonymous();
+
+        app.MapHealthChecks(
+                DependenciesEndpointPath,
+                new HealthCheckOptions
+                {
+                    Predicate = r => r.Tags.Contains(HealthCheckTags.Dependency),
+                    ResultStatusCodes =
+                    {
+                        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                        [HealthStatus.Degraded] = StatusCodes.Status200OK,
+                        [HealthStatus.Unhealthy] = StatusCodes.Status200OK,
+                    },
+                }
+            )
+            .AllowAnonymous();
 
         return app;
     }
+}
+
+/// <summary>Which probe a health check belongs to (see <see cref="Extensions.MapDefaultEndpoints"/>).</summary>
+public static class HealthCheckTags
+{
+    /// <summary>Liveness: only checks of the process itself.</summary>
+    public const string Live = "live";
+
+    /// <summary>Readiness: a required dependency. Unhealthy takes the instance out of rotation.</summary>
+    public const string Ready = "ready";
+
+    /// <summary>An optional dependency: reported by /health/dependencies, never gates readiness.</summary>
+    public const string Dependency = "dependency";
 }
