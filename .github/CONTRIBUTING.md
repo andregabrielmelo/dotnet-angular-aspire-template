@@ -15,7 +15,7 @@ This is a personal template repository - the primary way to "use" it is clicking
 ## Pull requests
 
 - Keep PRs focused on one change - a bug fix, a doc update, a workflow tweak.
-- Run `dotnet csharpier format .` (backend) and `npx prettier --write .` (frontend) before committing - CI checks formatting.
+- Run `dotnet csharpier format .` (backend) and `npm run format` (frontend) before committing - CI checks formatting.
 - If you're changing something architectural, consider whether it needs an [ADR](../docs/content/architecture-decisions/README.md).
 - Follow the conventions in [AGENTS.md](../AGENTS.md). It is written for coding agents, but the rules (layer boundaries, endpoint and use case shape, tests) apply to every change.
 

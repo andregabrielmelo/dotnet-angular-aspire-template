@@ -38,4 +38,4 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 ## Checks
 
-From `frontend/`, run `npx prettier --check "src/**/*.{ts,html,css}"`, `npm run lint`, `npm run build` and `npm run test` (Vitest, single run). Keep specs next to the file they test.
+From `frontend/`, run `npm run format:check`, `npm run lint`, `npm run build` and `npm run test` (Vitest, single run). Keep specs next to the file they test.

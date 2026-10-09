@@ -47,7 +47,7 @@ npm start                                          # ng serve - reached through 
 npm run build
 npm run test                                       # vitest, runs once (not watch mode)
 npm run lint                                       # eslint (@angular-eslint), CI-enforced
-npx prettier --check "src/**/*.{ts,html,css}"      # format check (CI-enforced); --write to fix
+npm run format:check                               # prettier check (CI-enforced); npm run format to fix
 ```
 
 ### Docs site (Hugo, in `docs/`)

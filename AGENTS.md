@@ -134,7 +134,7 @@ dotnet build AppTemplate.slnx
 dotnet test AppTemplate.slnx        # needs Docker (or Podman via DOCKER_HOST)
 
 # frontend/
-npx prettier --check "src/**/*.{ts,html,css}"
+npm run format:check               # npm run format to fix
 npm run lint
 npm run build
 npm run test
