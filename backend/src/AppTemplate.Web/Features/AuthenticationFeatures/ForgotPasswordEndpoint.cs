@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Users.ForgotPassword;
+using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.AuthenticationFeatures;
@@ -23,6 +24,7 @@ public sealed class ForgotPasswordEndpoint(IMediator _mediator)
     public override void Configure()
     {
         Post("/password-reset");
+        Version(ApiVersions.V1);
         AllowAnonymous();
         // Per client IP (X-Forwarded-For from the backend for frontend) - limits email flooding.
         Throttle(hitLimit: RequestsPerWindow, durationSeconds: WindowSeconds);

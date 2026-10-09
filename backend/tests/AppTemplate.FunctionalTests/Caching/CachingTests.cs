@@ -27,7 +27,7 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
         (
             await factory
                 .CreateAuthenticatedClient(subject)
-                .GetFromJsonAsync<CurrentUserResponse>("/users/me")
+                .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me")
         )!;
 
     [Fact]
@@ -35,12 +35,12 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
     {
         var target = await ProvisionAsync(NewSubject());
         var reader = factory.CreateAuthenticatedClient(NewSubject(), Permission.UsersRead);
-        await reader.GetFromJsonAsync<UserRecord>($"/users/{target.Id}"); // now cached
+        await reader.GetFromJsonAsync<UserRecord>($"/v1/users/{target.Id}"); // now cached
 
         var update = await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
-            .PutAsJsonAsync($"/users/{target.Id}", new { id = target.Id, name = "Renamed" });
-        var afterUpdate = await reader.GetFromJsonAsync<UserRecord>($"/users/{target.Id}");
+            .PutAsJsonAsync($"/v1/users/{target.Id}", new { id = target.Id, name = "Renamed" });
+        var afterUpdate = await reader.GetFromJsonAsync<UserRecord>($"/v1/users/{target.Id}");
 
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         Assert.Equal("Renamed", afterUpdate!.Name);
@@ -51,15 +51,18 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
     {
         var target = await ProvisionAsync(NewSubject());
         var reader = factory.CreateAuthenticatedClient(NewSubject(), Permission.UsersRead);
-        Assert.Equal(HttpStatusCode.OK, (await reader.GetAsync($"/users/{target.Id}")).StatusCode); // now cached
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await reader.GetAsync($"/v1/users/{target.Id}")).StatusCode
+        ); // now cached
 
         await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersDelete)
-            .DeleteAsync($"/users/{target.Id}");
+            .DeleteAsync($"/v1/users/{target.Id}");
 
         Assert.Equal(
             HttpStatusCode.NotFound,
-            (await reader.GetAsync($"/users/{target.Id}")).StatusCode
+            (await reader.GetAsync($"/v1/users/{target.Id}")).StatusCode
         );
     }
 
@@ -71,7 +74,7 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
 
         await factory
             .CreateAuthenticatedClient(NewSubject(), Permission.UsersWrite)
-            .PutAsJsonAsync($"/users/{me.Id}", new { id = me.Id, name = "Renamed By Admin" });
+            .PutAsJsonAsync($"/v1/users/{me.Id}", new { id = me.Id, name = "Renamed By Admin" });
         var afterUpdate = await ProvisionAsync(subject);
 
         Assert.Equal("Renamed By Admin", afterUpdate.Name);
@@ -92,29 +95,29 @@ public class CachingTests(AppTemplateWebApplicationFactory factory)
         HttpClient Client(params string[] permissions) =>
             CreateClient(app, NewSubject(), permissions);
 
-        var first = await Client(Permission.UsersRead).GetAsync("/users?page=1&per_page=10");
+        var first = await Client(Permission.UsersRead).GetAsync("/v1/users?page=1&per_page=10");
         var sameFromAnotherReader = await Client(Permission.UsersRead)
-            .GetAsync("/users?page=1&per_page=10");
+            .GetAsync("/v1/users?page=1&per_page=10");
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, sameFromAnotherReader.StatusCode);
         Assert.Equal(1, listQuery.Calls); // shared response served from the output cache
 
         // Authorization runs before the output cache: no permission, no cached response.
-        var forbidden = await Client().GetAsync("/users?page=1&per_page=10");
+        var forbidden = await Client().GetAsync("/v1/users?page=1&per_page=10");
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
 
         // Another page is another cache entry.
-        await Client(Permission.UsersRead).GetAsync("/users?page=2&per_page=10");
+        await Client(Permission.UsersRead).GetAsync("/v1/users?page=2&per_page=10");
         Assert.Equal(2, listQuery.Calls);
 
         // Any user write evicts cached lists.
         var subject = NewSubject();
         var me = await CreateClient(app, subject)
-            .GetFromJsonAsync<CurrentUserResponse>("/users/me");
+            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
         await CreateClient(app, subject)
-            .PutAsJsonAsync($"/users/{me!.Id}", new { id = me.Id, name = "Changed" });
-        await Client(Permission.UsersRead).GetAsync("/users?page=1&per_page=10");
+            .PutAsJsonAsync($"/v1/users/{me!.Id}", new { id = me.Id, name = "Changed" });
+        await Client(Permission.UsersRead).GetAsync("/v1/users?page=1&per_page=10");
         Assert.Equal(3, listQuery.Calls);
     }
 

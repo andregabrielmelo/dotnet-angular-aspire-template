@@ -25,6 +25,7 @@ builder
     .SwaggerDocument(o =>
     {
         o.ShortSchemaNames = true;
+        o.MaxEndpointVersion = ApiVersions.Latest;
         o.DocumentSettings = s =>
         {
             s.Title = "AppTemplate API";

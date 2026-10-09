@@ -26,8 +26,8 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     // Every test starts with the test job registered and not paused.
     public async Task InitializeAsync()
     {
-        await Manager().PostAsync($"/admin/jobs/{JobId}/resume", null);
-        await Manager().PostAsync("/admin/jobs/restore", null);
+        await Manager().PostAsync($"/v1/admin/jobs/{JobId}/resume", null);
+        await Manager().PostAsync("/v1/admin/jobs/restore", null);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -37,14 +37,14 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         Assert.Equal(
             HttpStatusCode.Unauthorized,
-            (await factory.CreateClient().GetAsync("/admin/jobs")).StatusCode
+            (await factory.CreateClient().GetAsync("/v1/admin/jobs")).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.Forbidden,
             (
                 await factory
                     .CreateAuthenticatedClient($"sub-{Guid.NewGuid():N}")
-                    .GetAsync("/admin/jobs")
+                    .GetAsync("/v1/admin/jobs")
             ).StatusCode
         );
     }
@@ -52,7 +52,7 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     [Fact]
     public async Task List_WithJobsRead_ReturnsTheRecurringJobs()
     {
-        var jobs = await Reader().GetFromJsonAsync<RecurringJobResponse[]>("/admin/jobs");
+        var jobs = await Reader().GetFromJsonAsync<RecurringJobResponse[]>("/v1/admin/jobs");
 
         var job = Assert.Single(jobs!, j => j.Id == JobId);
         Assert.Equal("0 0 * * *", job.Cron);
@@ -63,26 +63,26 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     public async Task Get_ReturnsTheJobWithItsRecentRuns()
     {
         var detail = await Reader()
-            .GetFromJsonAsync<RecurringJobDetailResponse>($"/admin/jobs/{JobId}");
+            .GetFromJsonAsync<RecurringJobDetailResponse>($"/v1/admin/jobs/{JobId}");
 
         Assert.Equal(JobId, detail!.Job.Id);
         Assert.NotNull(detail.RecentExecutions);
     }
 
     [Theory]
-    [InlineData("/admin/jobs/no-such-job", HttpStatusCode.NotFound)]
-    [InlineData("/admin/jobs/Not_A_Valid_Id", HttpStatusCode.BadRequest)]
+    [InlineData("/v1/admin/jobs/no-such-job", HttpStatusCode.NotFound)]
+    [InlineData("/v1/admin/jobs/Not_A_Valid_Id", HttpStatusCode.BadRequest)]
     public async Task Get_WithUnknownOrInvalidId_IsRejected(string path, HttpStatusCode expected)
     {
         Assert.Equal(expected, (await Reader().GetAsync(path)).StatusCode);
     }
 
     [Theory]
-    [InlineData("POST", "/admin/jobs/test-recurring-job/trigger")]
-    [InlineData("POST", "/admin/jobs/test-recurring-job/pause")]
-    [InlineData("POST", "/admin/jobs/test-recurring-job/resume")]
-    [InlineData("DELETE", "/admin/jobs/test-recurring-job")]
-    [InlineData("POST", "/admin/jobs/restore")]
+    [InlineData("POST", "/v1/admin/jobs/test-recurring-job/trigger")]
+    [InlineData("POST", "/v1/admin/jobs/test-recurring-job/pause")]
+    [InlineData("POST", "/v1/admin/jobs/test-recurring-job/resume")]
+    [InlineData("DELETE", "/v1/admin/jobs/test-recurring-job")]
+    [InlineData("POST", "/v1/admin/jobs/restore")]
     public async Task Mutations_RequireJobsManage(string method, string path)
     {
         var response = await Reader()
@@ -98,20 +98,20 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         Assert.Equal(
             HttpStatusCode.NoContent,
-            (await manager.PostAsync($"/admin/jobs/{JobId}/pause", null)).StatusCode
+            (await manager.PostAsync($"/v1/admin/jobs/{JobId}/pause", null)).StatusCode
         );
         var paused = (
-            await manager.GetFromJsonAsync<RecurringJobResponse[]>("/admin/jobs")
+            await manager.GetFromJsonAsync<RecurringJobResponse[]>("/v1/admin/jobs")
         )!.Single(j => j.Id == JobId);
         Assert.True(paused.IsPaused);
         Assert.Null(paused.NextExecution);
 
         Assert.Equal(
             HttpStatusCode.NoContent,
-            (await manager.PostAsync($"/admin/jobs/{JobId}/resume", null)).StatusCode
+            (await manager.PostAsync($"/v1/admin/jobs/{JobId}/resume", null)).StatusCode
         );
         var resumed = (
-            await manager.GetFromJsonAsync<RecurringJobResponse[]>("/admin/jobs")
+            await manager.GetFromJsonAsync<RecurringJobResponse[]>("/v1/admin/jobs")
         )!.Single(j => j.Id == JobId);
         Assert.False(resumed.IsPaused);
     }
@@ -123,23 +123,23 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
 
         Assert.Equal(
             HttpStatusCode.NoContent,
-            (await manager.PostAsync($"/admin/jobs/{JobId}/trigger", null)).StatusCode
+            (await manager.PostAsync($"/v1/admin/jobs/{JobId}/trigger", null)).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.NoContent,
-            (await manager.DeleteAsync($"/admin/jobs/{JobId}")).StatusCode
+            (await manager.DeleteAsync($"/v1/admin/jobs/{JobId}")).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.NotFound,
-            (await manager.GetAsync($"/admin/jobs/{JobId}")).StatusCode
+            (await manager.GetAsync($"/v1/admin/jobs/{JobId}")).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.NoContent,
-            (await manager.PostAsync("/admin/jobs/restore", null)).StatusCode
+            (await manager.PostAsync("/v1/admin/jobs/restore", null)).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.OK,
-            (await manager.GetAsync($"/admin/jobs/{JobId}")).StatusCode
+            (await manager.GetAsync($"/v1/admin/jobs/{JobId}")).StatusCode
         );
     }
 
@@ -148,7 +148,7 @@ public class JobEndpointsTests(AppTemplateWebApplicationFactory factory)
     {
         Assert.Equal(
             HttpStatusCode.NotFound,
-            (await Manager().PostAsync("/admin/jobs/no-such-job/pause", null)).StatusCode
+            (await Manager().PostAsync("/v1/admin/jobs/no-such-job/pause", null)).StatusCode
         );
     }
 }
