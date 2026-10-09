@@ -12,9 +12,15 @@ public static class MiddlewareConfigurations
         }
         else
         {
-            app.UseDefaultExceptionHandler(); // from FastEndpoints
+            // Unhandled exceptions become a 500 problem details response without exception
+            // details; the middleware logs the exception with the request's trace id.
+            app.UseExceptionHandler();
             app.UseHsts();
         }
+
+        // Empty error responses (401/403 from authorization, 404 for unmatched routes) get a
+        // problem details body too. See ProblemDetailsConfigurations.
+        app.UseStatusCodePages();
 
         app.UseAuthentication();
         app.UseAuthorization();
@@ -22,7 +28,12 @@ public static class MiddlewareConfigurations
         // endpoint's policies (see AuthorizedSharedResponsePolicy).
         app.UseOutputCache();
 
-        app.UseFastEndpoints();
+        app.UseFastEndpoints(config =>
+        {
+            config.Errors.ResponseBuilder =
+                ProblemDetailsConfigurations.FastEndpointsValidationProblem;
+            config.Errors.ProducesMetadataType = typeof(HttpValidationProblemDetails);
+        });
 
         if (app.Environment.IsDevelopment())
         {
