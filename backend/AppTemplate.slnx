@@ -16,6 +16,7 @@
     <Project Path="src/AppTemplate.Web/AppTemplate.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AppTemplate.ArchitectureTests/AppTemplate.ArchitectureTests.csproj" />
     <Project Path="tests/AppTemplate.BackendForFrontend.Tests/AppTemplate.BackendForFrontend.Tests.csproj" />
     <Project Path="tests/AppTemplate.FunctionalTests/AppTemplate.FunctionalTests.csproj" />
     <Project Path="tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj" />
