@@ -239,11 +239,6 @@
         "resolved": "10.0.0",
         "contentHash": "bqA2KZIknwyE9DCKEe3qvmr7odWRHmcMHlBwGvIPdFyaaxedeIQrELs+ryUgHHtgYK6TfK82jEMwBpJtERST6A=="
       },
-      "Microsoft.Extensions.Compliance.Abstractions": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "dfJxd9USR8BbRzZZPWVoqFVVESJRTUh2tn6TmSPQsJ2mJjvGsGJGlELM9vctAfgthajBicRZ9zzxsu6s4VUmMQ=="
-      },
       "Microsoft.Extensions.DependencyInjection.AutoActivation": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -451,7 +446,8 @@
         "type": "Project",
         "dependencies": {
           "Ardalis.Specification": "[9.3.1, )",
-          "Mediator.Abstractions": "[3.0.2, )"
+          "Mediator.Abstractions": "[3.0.2, )",
+          "Microsoft.Extensions.Compliance.Abstractions": "[10.8.0, )"
         }
       },
       "apptemplate.usecases": {
@@ -488,6 +484,12 @@
         "requested": "[10.8.0, )",
         "resolved": "10.8.0",
         "contentHash": "RCtCTK3eqKXx8LXqd7B8GjbTkIp4k3EgKeunaCmBJ+WA55Nva83CI2I+wVyp0S9jTG+aT6AYWQbkKOfvFOlmLA=="
+      },
+      "Microsoft.Extensions.Compliance.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[10.8.0, )",
+        "resolved": "10.8.0",
+        "contentHash": "7I0DXMTCqpXpXg+SLLDlfedtv6DN5Lgiv+PR3MclzqKPOHNB17YP42KMNI61ckSrffh0xsuIqQyCIjvWc6vUuw=="
       },
       "Microsoft.Extensions.Http.Resilience": {
         "type": "CentralTransitive",

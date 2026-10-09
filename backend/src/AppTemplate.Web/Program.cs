@@ -4,9 +4,7 @@ using AppTemplate.Web.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder
-    .AddServiceDefaults() // This sets up OpenTelemetry logging
-    .AddLoggerConfigurations(); // This adds Serilog for console formatting
+builder.AddServiceDefaults(); // OpenTelemetry, health checks, and Serilog logging with redaction
 
 using var loggerFactory = LoggerFactory.Create(config => config.AddConsole());
 var startupLogger = loggerFactory.CreateLogger<Program>();

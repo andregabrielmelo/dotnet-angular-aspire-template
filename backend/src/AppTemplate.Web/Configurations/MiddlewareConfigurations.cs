@@ -1,4 +1,5 @@
-﻿using Scalar.AspNetCore;
+﻿using AppTemplate.ServiceDefaults.Logging;
+using Scalar.AspNetCore;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -12,6 +13,9 @@ public static class MiddlewareConfigurations
 
         // Early, so its OnStarting callback also covers error and status-code-page responses.
         app.UseApiSecurityHeaders();
+
+        // Outside the exception handler, so it logs the status the client actually got.
+        app.UseDefaultRequestLogging();
 
         if (app.Environment.IsDevelopment())
         {
