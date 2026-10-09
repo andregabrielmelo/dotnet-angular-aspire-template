@@ -40,4 +40,6 @@ Every commit message follows [Conventional Commits 1.0.0](https://www.convention
 
 The [PR Conventions](workflows/pr-conventions.yml) workflow checks both rules on every PR: the branch name against its target, and every non-merge commit subject. To fix a rejected commit message, reword it with `git rebase -i` and force-push.
 
+A PR can merge into `main` or `develop` once four checks pass: `Gitflow branch`, `Conventional Commits`, `Frontend CI`, and `Backend CI`. The two build gates pass straight away when the PR doesn't touch their directory. See [Required checks](workflows/README.md#required-checks-and-the-gate-jobs).
+
 Thanks for taking the time to improve it.
