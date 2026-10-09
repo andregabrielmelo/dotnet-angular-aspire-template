@@ -12,7 +12,7 @@ Accepted. Routes amended by [ADR 015]({{< relref "adr-015-api-versioning" >}}): 
 Users who forget their password need to reset it. Keycloak owns the credentials ([ADR 007]({{< relref "adr-007-authentication-backend-for-frontend-keycloak" >}})), so the application must never see, store or set a password itself. The reset has to start from the app's own signed-out page, work without revealing which emails have accounts, and be hard to abuse for flooding someone's inbox.
 
 ## Decision
-- **`POST /password-reset`** on the Web API is anonymous and takes `{ email }`. It always answers **202** for a well-formed email, whether or not an account exists, and is throttled per client IP (5 requests per minute, FastEndpoints `Throttle`).
+- **`POST /password-reset`** on the Web API is anonymous and takes `{ email }`. It always answers **202** for a well-formed email, whether or not an account exists, and is rate limited per client address (5 requests per minute, the `password-reset` rate-limit policy; see Rate limiting in best practices).
 - The `ForgotPasswordHandler` use case calls `IPasswordResetService`, which is defined in UseCases. The handler maps "no such account" to success.
 - **`KeycloakPasswordResetService`** (Infrastructure) calls Keycloak's Admin REST API:
   - It looks the user up by exact email.

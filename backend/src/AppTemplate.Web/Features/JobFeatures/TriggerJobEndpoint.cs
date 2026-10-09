@@ -13,7 +13,7 @@ public class TriggerJobEndpoint(IMediator _mediator)
         Post("/admin/jobs/{JobId}/trigger");
         Version(ApiVersions.V1);
         Policies(Permission.JobsManage);
-        Throttle(hitLimit: JobEndpoints.MutationsPerMinute, durationSeconds: 60);
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.JobMutations));
 
         Summary(s =>
         {

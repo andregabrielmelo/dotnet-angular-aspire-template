@@ -39,6 +39,14 @@ Explicit guidelines for projects built from this template, so every project that
 - **The API** (`UseApiSecurityHeaders` in Web) only returns JSON, so it sends `X-Content-Type-Options: nosniff` on every response, and `Cache-Control: no-store` on every response for a signed-in caller, so browsers and shared proxies never keep one user's data. Server-side output caching is unaffected.
 - **No response compression.** Compressing HTTPS responses that mix secrets with attacker-influenced input enables [BREACH](https://www.breachattack.com/)-style attacks, and the reverse proxy or CDN in front of a real deployment compresses static assets better anyway. Don't add `UseResponseCompression()` to either host.
 
+## Rate limiting and timeouts
+
+- **Two layers, one mechanism.** ASP.NET Core's rate limiter (`RateLimitingConfigurations`) has a **global** limiter for overall traffic (600 requests a minute per signed-in user, 120 per anonymous address, set under `RateLimiting`), plus **named policies** for sensitive endpoints (`RateLimitPolicies.PasswordReset`, `RateLimitPolicies.JobMutations`). Every rejection is a 429 problem details response with `Retry-After`. Health endpoints are never limited.
+- **Partitions are never client-controlled.** A signed-in caller counts against `user:{sub}`, read only after JWT validation. Anyone else counts against `ip:{address}`, and that address comes from `X-Forwarded-For` only when the connection is from a proxy listed in `ForwardedHeaders:KnownProxies`/`KnownNetworks`. The list is empty by default; `appsettings.Development.json` trusts loopback for the local backend for frontend. In production, list your load balancer or reverse proxy, or every caller behind it shares one anonymous partition.
+- **Don't use FastEndpoints' `Throttle(...)`.** It keys on the raw `X-Forwarded-For` header, so a client can rotate it to get a fresh limit, and its 429 is plain text, not problem details.
+- **Request timeouts.** Every request gets 30 seconds (`RequestTimeouts:Default`), after which `HttpContext.RequestAborted` is cancelled and the client gets a 504 problem details response. Pass the `CancellationToken` through to EF Core and HttpClient calls so the work actually stops. An endpoint that waits on an external service with retries opts into `RequestTimeoutPolicies.ExternalCall` (45 seconds). Timeouts are disabled while a debugger is attached.
+- **A timeout doesn't undo anything.** If the transaction already committed, or an email or HTTP call already went out, it stays done even though the client got a 504. Make writes safe to retry, or make them idempotent.
+
 ## .NET Aspire
 
 - `AppTemplate.ServiceDefaults` (wired into `Web` via `AddServiceDefaults()`) is where cross-cutting concerns (OpenTelemetry, health checks, service discovery, retries) belong - once for the whole app, not duplicated per-service.

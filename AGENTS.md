@@ -41,7 +41,8 @@ Dependencies point inward:
 - Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 010](docs/content/architecture-decisions/adr-010-permission-based-authorization.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
 - Declare `Summary`, `Tags` and `Description(... .Produces...)` so the OpenAPI document stays accurate.
-- Sensitive or expensive operations use `Throttle(...)` (see `ForgotPasswordEndpoint`).
+- Sensitive or expensive operations add a named rate-limit policy: `Options(x => x.RequireRateLimiting(RateLimitPolicies.X))` (see `ForgotPasswordEndpoint`). Don't use FastEndpoints' `Throttle(...)`: it keys on the raw `X-Forwarded-For` header, which any client can set, and its 429 isn't a problem details response.
+- An endpoint that waits on an external service longer than the default 30-second request timeout opts into a named timeout policy: `Options(x => x.WithRequestTimeout(RequestTimeoutPolicies.X))`.
 
 ## 4. Use cases
 
