@@ -23,6 +23,9 @@ builder.Services.AddOutputCache(options =>
 
 var app = builder.Build();
 
+// First, so its OnStarting callback covers every response: errors, proxied ones, the SPA.
+app.UseSecurityHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler();
