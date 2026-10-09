@@ -17,7 +17,7 @@ public sealed class GetUserByIdRequest            // dedicated request DTO, no D
 }
 
 public class GetByIdEndpoint(IMediator mediator)
-    : Endpoint<GetUserByIdRequest, Results<Ok<UserRecord>, NotFound, ProblemHttpResult>, GetUserByIdMapper>
+    : Endpoint<GetUserByIdRequest, Results<Ok<UserRecord>, ProblemHttpResult>, GetUserByIdMapper>
 {
     public override void Configure()
     {
@@ -28,11 +28,11 @@ public class GetByIdEndpoint(IMediator mediator)
         Description(b => b.Produces<UserRecord>(200, "application/json").ProducesProblem(404));
     }
 
-    public override async Task<Results<Ok<UserRecord>, NotFound, ProblemHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<UserRecord>, ProblemHttpResult>> ExecuteAsync(
         GetUserByIdRequest request, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new GetUserQuery(UserId.From(request.Id)), cancellationToken);
-        return result.ToGetByIdResult(Map.FromEntity);   // ResultExtensions, never a hand-written switch
+        return result.ToOkResult(Map.FromEntity);   // ResultExtensions, never a hand-written switch
     }
 }
 
@@ -41,7 +41,7 @@ public sealed class GetByIdUserValidator : Validator<GetUserByIdRequest> { /* re
 public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, UserDto> { /* DTO mapping */ }
 ```
 
-- **Return types:** endpoint return types are `Results<...>` unions of `TypedResults`, so OpenAPI knows every outcome.
+- **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every failure is a problem details response ([ADR 014](../../docs/content/architecture-decisions/adr-014-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
 - **Validators** check request shape: required fields, lengths, formats and cross-field rules. Business invariants belong in Core value objects and aggregates, not in validators.
 - **Mapping:** `Ardalis.Result` maps to HTTP only through `Web/Extensions/ResultExtensions.cs`. If a new mapping is needed, add it there.
 - **Throttling:** use `Throttle(hitLimit, durationSeconds)` on sensitive or expensive endpoints. The limit keys on the client IP forwarded by the backend for frontend.
@@ -71,5 +71,5 @@ UseCases/<Feature>/<UseCase>/
   - Use `IClassFixture<AppTemplateWebApplicationFactory>`.
   - Add `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`.
   - Create clients with `factory.CreateAuthenticatedClient(sub, Permission.X)`.
-- **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409).
+- **What to test:** for each endpoint, cover the success path, invalid input (400), no permission (403), a missing resource (404) and any conflict (409). Errors are problem details, so assert the status code and, where it matters, `errors`/`detail` (see `ProblemDetailsContractTests`).
 - **Replacing services:** use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(...))`, as `CachingTests` and `CacheOutageTests` do.
