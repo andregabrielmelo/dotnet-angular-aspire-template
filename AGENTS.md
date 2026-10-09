@@ -118,7 +118,8 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 
 - C#: `backend/.editorconfig`, CSharpier, central package versions in `backend/Directory.Packages.props`, and LF line endings.
 - After changing a package version, run `dotnet restore` and commit the regenerated `packages.lock.json` files.
-- Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation. Never log tokens, passwords or full request bodies.
+- Inject `ILogger<T>` and use message templates (`"{UserId} created"`), never string interpolation: interpolated text bypasses redaction. Never log tokens, passwords or full request bodies.
+- Mark personal data and secrets with `[PersonalData]`/`[SecretData]` (SharedKernel) on the type or property (`[property: PersonalData]` on a record parameter), and log objects with `{@Object}`. The logging pipeline redacts classified values in both the console and the OpenTelemetry export. Never log a DTO's `ToString()` (`{Response}` without `@`): it prints every property and nothing gets redacted. See `docs/content/best-practices.md`, Logging.
 - Comments explain *why*, not *what*. Don't add a dependency when the framework or an existing library already solves the problem.
 
 ## 13. Git workflow

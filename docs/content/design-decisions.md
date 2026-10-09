@@ -39,7 +39,7 @@ EF Core + Npgsql implementation of the repositories and query services, plus any
 
 ## Web
 
-The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the REPR pattern for one-file-per-endpoint API design, [Scalar](https://github.com/scalar/scalar) for interactive API docs, [Serilog](https://serilog.net/) for structured logging.
+The ASP.NET Core entry point. [FastEndpoints](https://fast-endpoints.com/) + the REPR pattern for one-file-per-endpoint API design, [Scalar](https://github.com/scalar/scalar) for interactive API docs, [Serilog](https://serilog.net/) for structured logging (configured once for every host in ServiceDefaults, with redaction of personal data and secrets).
 
 ## SharedKernel
 
