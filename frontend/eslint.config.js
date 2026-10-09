@@ -34,6 +34,21 @@ module.exports = defineConfig([
     },
   },
   {
+    // API calls belong in a feature's service, never in a component, guard or interceptor.
+    files: ['src/**/*.ts'],
+    ignores: ['src/**/*service.ts', 'src/**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='inject'] > Identifier[name='HttpClient']",
+          message:
+            'Inject HttpClient only in a feature service (*.service.ts) and call that service instead.',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
