@@ -1,22 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../core/auth/current-user.service';
 import { Permission } from '../../core/auth/permissions';
-
-interface UserRow {
-  id: number;
-  name: string;
-  phoneNumber: string | null;
-}
-
-interface UserPage {
-  items: UserRow[];
-  page: number;
-  perPage: number;
-  totalCount: number;
-  totalPages: number;
-}
+import { UserRow } from './users.model';
+import { UsersService } from './users.service';
 
 /** User administration. Reaching it requires users:read; deleting requires users:delete. */
 @Component({
@@ -26,7 +14,7 @@ interface UserPage {
   templateUrl: './users-page.html',
 })
 export class UsersPage implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly usersService = inject(UsersService);
   private readonly currentUser = inject(CurrentUserService);
 
   protected readonly users = signal<UserRow[]>([]);
@@ -39,7 +27,7 @@ export class UsersPage implements OnInit {
 
   deleteUser(user: UserRow): void {
     this.errorMessage.set(null);
-    this.http.delete(`api/users/${user.id}`).subscribe({
+    this.usersService.delete(user.id).subscribe({
       next: () => this.users.update((users) => users.filter((u) => u.id !== user.id)),
       error: (error: HttpErrorResponse) =>
         this.errorMessage.set(
@@ -51,7 +39,7 @@ export class UsersPage implements OnInit {
   }
 
   private load(): void {
-    this.http.get<UserPage>('api/users?page=1&per_page=50').subscribe({
+    this.usersService.list(1, 50).subscribe({
       next: (page) => this.users.set(page.items),
       error: () => this.errorMessage.set('Could not load users.'),
     });

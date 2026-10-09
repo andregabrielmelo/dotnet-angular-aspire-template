@@ -6,7 +6,7 @@ Restores (`--locked-mode`, against the committed `packages.lock.json` files), fo
 
 ## `frontend-build.yml`
 
-Installs, format-checks (`prettier --check`), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
+Installs, format-checks (`npm run format:check`, prettier), lints (`eslint`, via `@angular-eslint`), tests (`vitest`, via `npm run test`), and builds the Angular app. Triggers on pushes to `main`/`develop` that touch `frontend/**` and on every PR. On a PR, the build only runs if it touches `frontend/**`, but the `Frontend CI` gate check always reports (see [Required checks](#required-checks-and-the-gate-jobs)).
 
 ## `pr-conventions.yml`
 

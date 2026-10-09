@@ -66,6 +66,11 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Changed
 
+- Frontend:
+  - `npm run format` and `npm run format:check` replace the hand-typed prettier commands, and CI uses them.
+  - `strict` and `strictTemplates` are now explicit; TypeScript 6 and Angular 22 already applied them by default.
+  - The users page calls a new `UsersService`. ESLint now rejects `inject(HttpClient)` outside service files.
+
 - **Breaking:** every error response is now an RFC 9457 problem details document with a `traceId`, in both the API and the backend for frontend (ADR 014).
   - Validation errors use ASP.NET Core's `errors` shape instead of FastEndpoints' `ErrorResponse`.
   - 401, 403 and 404 responses have a body.

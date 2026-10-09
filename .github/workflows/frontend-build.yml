@@ -86,7 +86,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting (prettier)
-        run: npx prettier --check "src/**/*.{ts,html,css}"
+        run: npm run format:check
 
       - name: Lint (eslint)
         run: npm run lint
