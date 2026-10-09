@@ -1,23 +1,6 @@
-// Shapes returned by the Web API's /admin/jobs endpoints (camelCase JSON).
-export interface RecurringJob {
-  id: string;
-  cron: string;
-  nextExecution: string | null;
-  lastExecution: string | null;
-  lastStatus: string | null;
-  isPaused: boolean;
-  createdAt: string | null;
-}
+import { ApiSchema } from '../../core/api/api-schema';
 
-export interface JobExecution {
-  jobId: string;
-  status: string;
-  finishedAt: string | null;
-  durationMs: number | null;
-  error: string | null;
-}
-
-export interface RecurringJobDetail {
-  job: RecurringJob;
-  recentExecutions: JobExecution[];
-}
+// Shapes returned by the Web API's /v1/admin/jobs endpoints, generated from its OpenAPI document.
+export type RecurringJob = ApiSchema<'RecurringJobResponse'>;
+export type JobExecution = ApiSchema<'JobExecutionResponse'>;
+export type RecurringJobDetail = ApiSchema<'RecurringJobDetailResponse'>;
