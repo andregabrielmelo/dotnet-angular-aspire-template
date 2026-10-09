@@ -3,8 +3,6 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.Delete;
 
-public record DeleteUserCommand(UserId UserId) : Mediator.ICommand<Result>;
-
 public class DeleteUserHandler(IRepository<User> _repository, ICacheInvalidator _cacheInvalidator)
     : Mediator.ICommandHandler<DeleteUserCommand, Result>
 {

@@ -14,9 +14,6 @@ public record CurrentUserDto(UserId Id, UserName Name, EmailAddress Email);
 /// so the domain <see cref="User"/> row is created the first time that identity calls the API.
 /// Called on every page load of the SPA, so the existing-user lookup goes through HybridCache.
 /// </summary>
-public record GetOrCreateCurrentUserCommand(string ExternalId, UserName Name, EmailAddress Email)
-    : ICommand<Result<CurrentUserDto>>;
-
 public class GetOrCreateCurrentUserHandler(
     IRepository<User> _repository,
     HybridCache _cache,

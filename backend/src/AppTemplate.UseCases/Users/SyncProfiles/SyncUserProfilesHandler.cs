@@ -5,9 +5,6 @@ using AppTemplate.UseCases.Caching;
 
 namespace AppTemplate.UseCases.Users.SyncProfiles;
 
-/// <returns>How many users were updated.</returns>
-public sealed record SyncUserProfilesCommand : ICommand<Result<int>>;
-
 /// <summary>
 /// Users edit their name and email in Keycloak's account console, and the domain copy only
 /// learns about it here. Runs as a recurring background job, and is safe to repeat or retry:

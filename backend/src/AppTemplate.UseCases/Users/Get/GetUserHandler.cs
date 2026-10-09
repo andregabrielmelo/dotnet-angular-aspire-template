@@ -4,8 +4,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.Get;
 
-public record GetUserQuery(UserId UserId) : IQuery<Result<UserDto>>;
-
 /// <summary>
 /// Cache-aside through HybridCache: concurrent misses for the same user share one database
 /// call (stampede protection), and "not found" is cached too, until the next user write
