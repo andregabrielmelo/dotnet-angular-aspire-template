@@ -27,13 +27,15 @@ public static class ApplicationBuilderExtensions
         if (app.Environment.IsDevelopment())
         {
             app.MapHangfireDashboard(
-                DashboardPath,
-                new DashboardOptions
-                {
-                    DashboardTitle = "AppTemplate jobs",
-                    Authorization = [new LocalRequestsOnlyAuthorizationFilter()],
-                }
-            );
+                    DashboardPath,
+                    new DashboardOptions
+                    {
+                        DashboardTitle = "AppTemplate jobs",
+                        Authorization = [new LocalRequestsOnlyAuthorizationFilter()],
+                    }
+                )
+                // Guarded by its own local-requests-only filter; a browser has no bearer token.
+                .AllowAnonymous();
         }
 
         await using var scope = app.Services.CreateAsyncScope();
