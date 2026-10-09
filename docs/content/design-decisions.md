@@ -35,7 +35,7 @@ CQRS commands/queries via [Mediator](https://github.com/martinothamar/Mediator) 
 
 ## Infrastructure
 
-EF Core + Npgsql implementation of the repositories and query services, plus anything else that talks to the outside world (email via MailKit, etc.). Implements interfaces defined in Core/UseCases so nothing above it depends on EF Core directly. Caching technology lives here too: `HybridCache` with Redis as its distributed (L2) cache, behind `ICache`.
+EF Core + Npgsql implementation of the repositories and query services, plus anything else that talks to the outside world (email via MailKit, etc.). Implements interfaces defined in Core/UseCases so nothing above it depends on EF Core directly. Caching technology lives here too: `HybridCache` with Redis as its distributed (L2) cache, behind `ICache`. It doesn't cache misses, and a Redis outage degrades to database reads and logged invalidation failures rather than failed requests.
 
 ## Web
 

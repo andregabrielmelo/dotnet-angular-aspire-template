@@ -16,7 +16,7 @@ All notable changes to **this template** are documented here (not changes to pro
 - Dependabot for NuGet, npm, and GitHub Actions dependencies.
 - ESLint (`@angular-eslint`) and Prettier for the frontend; csharpier for the backend, enforced in CI and applied automatically to staged files by a git pre-commit hook (Husky.Net, auto-installed on first build after cloning).
 - `USAGE.md`, `CONTRIBUTING.md` (in `.github/`), and this changelog.
-- Caching: `HybridCache` over Redis (provisioned by the AppHost as `cache`), behind a minimal UseCases-owned `ICache`. The `User` get-by-id query is cached (cache-aside) and invalidated by the create/update/delete handlers. Redis is required unless `Cache:AllowLocalOnly` is set (Development and functional tests). See ADR 007.
+- Caching: `HybridCache` over Redis (provisioned by the AppHost as `cache`), behind a minimal UseCases-owned `ICache`. The `User` get-by-id query is cached (cache-aside) and invalidated by the update/delete handlers. Misses (not found) aren't cached, invalidation failures are logged instead of failing the write, expirations are configurable (`Cache:Expiration`, `Cache:LocalExpiration`), and Redis is covered by a health check. Redis is required unless `Cache:AllowLocalOnly` is set (Development and functional tests). See ADR 007.
 
 ### Fixed
 

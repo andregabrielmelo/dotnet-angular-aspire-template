@@ -1,5 +1,4 @@
 using AppTemplate.SharedKernel;
-using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Update;
 using Ardalis.Result;
@@ -10,7 +9,7 @@ namespace AppTemplate.UnitTests.UseCases.Users;
 public class UpdateUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
-    private readonly ICache _cache = Substitute.For<ICache>();
+    private readonly FakeCache _cache = new();
 
     private UpdateUserHandler CreateHandler() => new(_repository, _cache);
 
@@ -34,9 +33,7 @@ public class UpdateUserHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Equal("Ada King", result.Value.Name.Value);
         await _repository.Received(1).UpdateAsync(user, Arg.Any<CancellationToken>());
-        await _cache
-            .Received(1)
-            .RemoveAsync(UserCacheKeys.ById(UserId.From(1)), Arg.Any<CancellationToken>());
+        Assert.Equal([UserCacheKeys.ById(UserId.From(1))], _cache.RemovedKeys);
     }
 
     [Fact]
@@ -51,6 +48,6 @@ public class UpdateUserHandlerTests
             );
 
         Assert.Equal(ResultStatus.NotFound, result.Status);
-        await _cache.DidNotReceive().RemoveAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Assert.Empty(_cache.RemovedKeys);
     }
 }
