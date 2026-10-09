@@ -32,6 +32,13 @@ Explicit guidelines for projects built from this template, so every project that
 - **Strict typing is on** (`strict` and `strictTemplates` in `tsconfig.json`). Don't loosen it per file, and avoid `any`; give API responses an interface in the feature's model file.
 - **Accessibility:** semantic elements, a `<label>` for every control, keyboard operation, and error text linked to its field with `aria-describedby`. `npm run lint` runs Angular's template accessibility rules - fix what it reports rather than disabling the rule.
 
+## Security headers
+
+- **The SPA document** (served by the backend for frontend, from `wwwroot` or the Angular dev server) gets a strict `Content-Security-Policy` (`SecurityHeadersMiddleware.ContentSecurityPolicy`), `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Content-Type-Options: nosniff`. Scripts load only from the same origin: no inline `<script>`, no inline event handlers, no `eval`. Styles allow `'unsafe-inline'`, because Angular injects component styles at runtime.
+- **Keep the build CSP-compatible.** Angular's critical CSS inlining is off in `angular.json`, because it adds an `onload` handler the CSP blocks, which would leave the page unstyled. `npm run csp:check` (run in CI after the build) fails if the built `index.html` contains an inline script or handler. If you add a third-party script, font or image host, add its origin to the matching CSP directive instead of loosening `script-src`.
+- **The API** (`UseApiSecurityHeaders` in Web) only returns JSON, so it sends `X-Content-Type-Options: nosniff` on every response, and `Cache-Control: no-store` on every response for a signed-in caller, so browsers and shared proxies never keep one user's data. Server-side output caching is unaffected.
+- **No response compression.** Compressing HTTPS responses that mix secrets with attacker-influenced input enables [BREACH](https://www.breachattack.com/)-style attacks, and the reverse proxy or CDN in front of a real deployment compresses static assets better anyway. Don't add `UseResponseCompression()` to either host.
+
 ## .NET Aspire
 
 - `AppTemplate.ServiceDefaults` (wired into `Web` via `AddServiceDefaults()`) is where cross-cutting concerns (OpenTelemetry, health checks, service discovery, retries) belong - once for the whole app, not duplicated per-service.

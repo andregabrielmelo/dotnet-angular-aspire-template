@@ -110,6 +110,7 @@ See [`.github/instructions/frontend.instructions.md`](.github/instructions/front
 - Standalone components in `core/`, `shared/` and `features/<feature>/`.
 - HTTP calls live in feature services, not components.
 - Guards are UX, not authorization.
+- The SPA runs under a strict CSP: no inline scripts, inline event handlers or `eval`. New external origins go into the CSP directive, never `'unsafe-inline'` scripts (see `docs/content/best-practices.md`, Security headers).
 - The browser never holds tokens ([ADR 007](docs/content/architecture-decisions/adr-007-authentication-backend-for-frontend-keycloak.md)).
 
 ## 12. Code style
@@ -139,6 +140,7 @@ dotnet test AppTemplate.slnx        # needs Docker (or Podman via DOCKER_HOST)
 npm run format:check               # npm run format to fix
 npm run lint
 npm run build
+npm run csp:check
 npm run test
 ```
 
