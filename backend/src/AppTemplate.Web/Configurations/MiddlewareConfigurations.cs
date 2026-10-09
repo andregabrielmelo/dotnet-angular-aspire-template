@@ -39,10 +39,11 @@ public static class MiddlewareConfigurations
             );
 
             app.MapScalarApiReference(options =>
-            {
-                options.WithTitle("AppTemplate API");
-                options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
-            });
+                {
+                    options.WithTitle("AppTemplate API");
+                    options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
+                })
+                .AllowAnonymous(); // a browser page, not an API call: no bearer token
         }
 
         app.UseHttpsRedirection(); // Note this will drop Authorization headers

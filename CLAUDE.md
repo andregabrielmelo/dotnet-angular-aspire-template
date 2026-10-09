@@ -103,10 +103,14 @@ Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `h
 
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
-Two test projects under `backend/tests/`, both xUnit (see ADR 006 for the reasoning):
+Four test projects under `backend/tests/`, all xUnit (see ADR 006 for the reasoning):
 
 - **`AppTemplate.UnitTests`** - Core/UseCases in isolation, `IRepository<T>` substituted with NSubstitute. No I/O.
 - **`AppTemplate.FunctionalTests`** - full HTTP → FastEndpoints → Mediator → EF Core → Postgres pipeline via `WebApplicationFactory<Program>`. `PostgresTestDatabase` starts one real Postgres container per test run (Testcontainers), and each `AppTemplateWebApplicationFactory` gets a fresh database in it, created by the real migrations - so **Docker is required** (Podman works via `DOCKER_HOST` with `TESTCONTAINERS_RYUK_DISABLED=true`). Mark every test class that uses the factory `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`: CI's Windows/macOS jobs run `--filter "Category!=RequiresDocker"`, since they can't run Linux containers.
+- **`AppTemplate.BackendForFrontend.Tests`** - the backend for frontend, in-process. No Docker.
+- **`AppTemplate.ArchitectureTests`** - enforces ADR 001: allowed `ProjectReference`s per `src` project (a new project must be added to the allow-list), forbidden type dependencies per layer (NetArchTest), endpoints under `Web.Features`, no MVC controllers, handlers only in UseCases, and `<UseCase>Command`/`<UseCase>Query` naming. Run it with `dotnet test tests/AppTemplate.ArchitectureTests`.
+
+Every route requires an authenticated user unless it calls `AllowAnonymous()`: there is an authorization fallback policy, and `EndpointAuthorizationTests` (functional) pins the list of anonymous routes, so update it when you deliberately make an endpoint public.
 
 Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Vogen](https://github.com/SteveDunn/Vogen) source-generated value objects with a `Validate` method enforcing invariants at construction. EF Core conversions for them are registered centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs` - add new value objects there, not per-entity. New entity IDs also need a `HasValueGenerator<VogenIdValueGenerator<...>>()` call in that entity's `IEntityTypeConfiguration` (see `UserConfiguration.cs`).
 
