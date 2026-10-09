@@ -66,6 +66,12 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Changed
 
+- **Breaking:** every error response is now an RFC 9457 problem details document with a `traceId`, in both the API and the backend for frontend (ADR 014).
+  - Validation errors use ASP.NET Core's `errors` shape instead of FastEndpoints' `ErrorResponse`.
+  - 401, 403 and 404 responses have a body.
+  - `Conflict`, `Unavailable` and unexpected failures return 409, 503 and 500 instead of 400.
+  - 500 responses never include internal error messages.
+
 - The `BackgroundJobs` configuration section is now `JobScheduling` (`Enabled`, `RunServer`, `WorkerCount`), and the Hangfire dashboard moved from `/jobs` to `/hangfire`.
 - `Newtonsoft.Json` is pinned to 13.0.4 (Hangfire.Core only requires 11.0.1, which has advisory GHSA-5crp-9r3c-p9vr).
 - A root `.gitattributes` enforces LF line endings repository-wide.

@@ -34,7 +34,8 @@ Dependencies point inward:
 
 - FastEndpoints with the REPR pattern only. No MVC controllers and no Minimal API handlers for feature endpoints.
 - One endpoint class per HTTP operation, under `Web/Features/<Feature>Features/`. The request DTO, the FluentValidation `Validator<T>` and the `Mapper` live in the same file as the endpoint (see `GetByIdEndpoint.cs`).
-- Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs`. No business logic, EF Core, cache calls or external SDKs in endpoints.
+- Endpoints are thin: translate the request into a command or query, `await mediator.Send(..., cancellationToken)`, and map the `Result` with `Web/Extensions/ResultExtensions.cs` (`ToOkResult`, `ToCreatedResult`, `ToNoContentResult`, `ToAcceptedResult`). The return type is `Results<Ok<T>, ProblemHttpResult>` (or `Created`, `NoContent`, `Accepted`). No business logic, EF Core, cache calls or external SDKs in endpoints.
+- Every error is an RFC 9457 problem details response with a `traceId` ([ADR 014](docs/content/architecture-decisions/adr-014-problem-details-error-contract.md)). Never build an error response by hand or `switch` on `ResultStatus` in an endpoint.
 - Request and response types are dedicated DTOs. Never expose an entity, aggregate or value object.
 - Every endpoint is authenticated by default, and a fallback policy covers routes that declare nothing. Declare either `AllowAnonymous()` (deliberately) or `Policies(Permission.X)` explicitly ([ADR 010](docs/content/architecture-decisions/adr-010-permission-based-authorization.md)). A new anonymous route must be added to `EndpointAuthorizationTests`.
 - Never put Data Annotations attributes (`[Required]` and so on) on request DTOs. FastEndpoints ignores them; use the validator.
@@ -45,7 +46,7 @@ Dependencies point inward:
 
 - Use [Mediator](https://github.com/martinothamar/Mediator) (source-generated). Never MediatR, and never a second dispatch mechanism.
 - One folder per use case: `UseCases/<Feature>/<UseCase>/`. The command or query record has its own file (`UpdateUserCommand.cs`) next to its handler (`UpdateUserHandler.cs`).
-- Handlers return `Ardalis.Result`. Use `Result.NotFound()`, `Result.Forbidden()`, `Result.Conflict()` or `Result.Invalid(...)` for expected outcomes. Throw only for unexpected failures.
+- Handlers return `Ardalis.Result`. Use `Result.NotFound()`, `Result.Forbidden()`, `Result.Conflict()` or `Result.Invalid(...)` for expected outcomes; their messages reach the caller. `Result.Error()` and `Result.Unavailable()` become a generic 500 or 503, so log the details in the handler. Throw only for unexpected failures.
 - Resource-based authorization ("may update their own profile, or anyone's with `users:write`") lives in the handler, through `ICurrentUser`, and returns `Result.Forbidden()`.
 - **Repository or query service?**
   - Use `IRepository<T>` with an `Ardalis.Specification` for aggregate-oriented writes: load, change through domain methods, save.

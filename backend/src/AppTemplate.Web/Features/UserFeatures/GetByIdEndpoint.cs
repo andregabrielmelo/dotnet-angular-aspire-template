@@ -12,11 +12,7 @@ public sealed class GetUserByIdRequest
 }
 
 public class GetByIdEndpoint(IMediator mediator)
-    : Endpoint<
-        GetUserByIdRequest,
-        Results<Ok<UserRecord>, NotFound, ProblemHttpResult>,
-        GetUserByIdMapper
-    >
+    : Endpoint<GetUserByIdRequest, Results<Ok<UserRecord>, ProblemHttpResult>, GetUserByIdMapper>
 {
     public override void Configure()
     {
@@ -47,7 +43,7 @@ public class GetByIdEndpoint(IMediator mediator)
         );
     }
 
-    public override async Task<Results<Ok<UserRecord>, NotFound, ProblemHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<UserRecord>, ProblemHttpResult>> ExecuteAsync(
         GetUserByIdRequest request,
         CancellationToken cancellationToken
     )
@@ -56,7 +52,7 @@ public class GetByIdEndpoint(IMediator mediator)
             new GetUserQuery(UserId.From(request.Id)),
             cancellationToken
         );
-        return result.ToGetByIdResult(Map.FromEntity);
+        return result.ToOkResult(Map.FromEntity);
     }
 }
 

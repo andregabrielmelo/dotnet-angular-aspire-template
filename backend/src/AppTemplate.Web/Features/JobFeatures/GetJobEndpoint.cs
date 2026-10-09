@@ -5,7 +5,7 @@ using AppTemplate.Web.Extensions;
 namespace AppTemplate.Web.Features.JobFeatures;
 
 public class GetJobEndpoint(IMediator _mediator)
-    : Endpoint<JobIdRequest, Results<Ok<RecurringJobDetailResponse>, NotFound, ProblemHttpResult>>
+    : Endpoint<JobIdRequest, Results<Ok<RecurringJobDetailResponse>, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -26,10 +26,10 @@ public class GetJobEndpoint(IMediator _mediator)
     }
 
     public override async Task<
-        Results<Ok<RecurringJobDetailResponse>, NotFound, ProblemHttpResult>
+        Results<Ok<RecurringJobDetailResponse>, ProblemHttpResult>
     > ExecuteAsync(JobIdRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetJobQuery(request.JobId), cancellationToken);
-        return result.ToGetByIdResult(RecurringJobDetailResponse.From);
+        return result.ToOkResult(RecurringJobDetailResponse.From);
     }
 }

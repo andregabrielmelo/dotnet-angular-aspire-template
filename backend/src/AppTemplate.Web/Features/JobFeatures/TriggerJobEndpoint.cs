@@ -5,7 +5,7 @@ using AppTemplate.Web.Extensions;
 namespace AppTemplate.Web.Features.JobFeatures;
 
 public class TriggerJobEndpoint(IMediator _mediator)
-    : Endpoint<JobIdRequest, Results<NoContent, NotFound, ProblemHttpResult>>
+    : Endpoint<JobIdRequest, Results<NoContent, ProblemHttpResult>>
 {
     public override void Configure()
     {
@@ -31,11 +31,11 @@ public class TriggerJobEndpoint(IMediator _mediator)
         Description(builder => builder.ClearDefaultAccepts());
     }
 
-    public override async Task<Results<NoContent, NotFound, ProblemHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, ProblemHttpResult>> ExecuteAsync(
         JobIdRequest request,
         CancellationToken cancellationToken
     ) =>
         (
             await _mediator.Send(new TriggerJobCommand(request.JobId), cancellationToken)
-        ).ToDeleteResult();
+        ).ToNoContentResult();
 }

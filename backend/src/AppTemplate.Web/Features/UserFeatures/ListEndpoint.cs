@@ -2,6 +2,7 @@
 using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.List;
 using AppTemplate.Web.Configurations;
+using AppTemplate.Web.Extensions;
 
 namespace AppTemplate.Web.Features.UserFeatures;
 
@@ -86,7 +87,7 @@ public class ListEndpoint(IMediator mediator)
         );
         if (!result.IsSuccess)
         {
-            await Send.ErrorsAsync(statusCode: 400, cancellationToken);
+            await Send.ResultAsync(result.ToProblem());
             return;
         }
 
