@@ -118,6 +118,8 @@ Every route requires an authenticated user unless it calls `AllowAnonymous()`: t
 
 Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Vogen](https://github.com/SteveDunn/Vogen) source-generated value objects with a `Validate` method enforcing invariants at construction. EF Core conversions for them are registered centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs` - add new value objects there, not per-entity. New entity IDs also need a `HasValueGenerator<VogenIdValueGenerator<...>>()` call in that entity's `IEntityTypeConfiguration` (see `UserConfiguration.cs`).
 
+Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter plus named per-endpoint policies (`RateLimitPolicies`), partitioned by validated `sub` or by client address. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development). Every request has a 30-second timeout (`RequestTimeoutConfigurations.cs`, 504 problem details). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`.
+
 Postgres uses `EFCore.NamingConventions`' snake_case convention, so raw SQL (see `ListUsersQueryService`'s `FromSqlRaw`) must use snake_case column names, not the C# property names.
 
 ### Aspire orchestration (`backend/src/AppTemplate.AppHost/AppHost.cs`)

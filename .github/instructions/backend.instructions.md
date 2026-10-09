@@ -45,7 +45,7 @@ public sealed class GetUserByIdMapper : Mapper<GetUserByIdRequest, UserRecord, U
 - **Return types:** an endpoint returns `Results<Success, ProblemHttpResult>`, where the success type is `Ok<T>`, `Created<T>`, `NoContent` or `Accepted`. Every failure is a problem details response ([ADR 014](../../docs/content/architecture-decisions/adr-014-problem-details-error-contract.md)), so declare the possible ones with `ProducesProblem(status)` in `Description(...)`.
 - **Validators** check request shape: required fields, lengths, formats and cross-field rules. Business invariants belong in Core value objects and aggregates, not in validators.
 - **Mapping:** `Ardalis.Result` maps to HTTP only through `Web/Extensions/ResultExtensions.cs`. If a new mapping is needed, add it there.
-- **Throttling:** use `Throttle(hitLimit, durationSeconds)` on sensitive or expensive endpoints. The limit keys on the client IP forwarded by the backend for frontend.
+- **Rate limiting:** a global limiter covers every endpoint. Sensitive or expensive endpoints add a named policy from `RateLimitPolicies` with `Options(x => x.RequireRateLimiting(...))`. Limits key on the validated `sub`, or on the client address (trusted only from `ForwardedHeaders:KnownProxies`). Never use FastEndpoints' `Throttle(...)`.
 
 ## Use case shape
 
