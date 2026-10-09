@@ -13,7 +13,7 @@ public class RemoveJobEndpoint(IMediator _mediator)
         Delete("/admin/jobs/{JobId}");
         Version(ApiVersions.V1);
         Policies(Permission.JobsManage);
-        Throttle(hitLimit: JobEndpoints.MutationsPerMinute, durationSeconds: 60);
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.JobMutations));
 
         Summary(s =>
         {

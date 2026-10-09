@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using AppTemplate.Web.Features.AuthenticationFeatures;
 using Ardalis.Result;
@@ -74,5 +74,37 @@ public class ForgotPasswordEndpointTests(AppTemplateWebApplicationFactory factor
         var throttled = await client.PostAsJsonAsync("/v1/password-reset", request);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
+    }
+
+    [Fact]
+    public async Task Throttle_CannotBeBypassedWithASpoofedForwardedFor()
+    {
+        // A client connecting directly (not through the trusted proxy) rotates X-Forwarded-For
+        // on every call. The throttle must still count all of them against its real address.
+        var n = 0;
+        Task<HttpResponseMessage> SendWithNewSpoofedAddress()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/v1/password-reset")
+            {
+                Content = JsonContent.Create(
+                    new ForgotPasswordRequest { Email = "ada@example.com" }
+                ),
+            };
+            request.Headers.Add(TestPeerAddress.HeaderName, "203.0.113.8");
+            request.Headers.Add("X-Forwarded-For", $"198.51.100.{++n}");
+            return factory.CreateClient().SendAsync(request);
+        }
+
+        for (var i = 0; i < ForgotPasswordEndpoint.RequestsPerWindow; i++)
+        {
+            Assert.Equal(HttpStatusCode.Accepted, (await SendWithNewSpoofedAddress()).StatusCode);
+        }
+        var throttled = await SendWithNewSpoofedAddress();
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
+        Assert.Equal("application/problem+json", throttled.Content.Headers.ContentType?.MediaType);
+        var body = await throttled.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(429, body.GetProperty("status").GetInt32());
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("traceId").GetString()));
     }
 }

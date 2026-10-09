@@ -6,7 +6,11 @@ public static class MiddlewareConfigurations
 {
     public static async Task<IApplicationBuilder> UseAppMiddleware(this WebApplication app)
     {
-        // First, so its OnStarting callback also covers error and status-code-page responses.
+        // Before anything reads the client address: rewrites RemoteIpAddress from
+        // X-Forwarded-For, but only for a connection from a configured proxy.
+        app.UseForwardedHeaders();
+
+        // Early, so its OnStarting callback also covers error and status-code-page responses.
         app.UseApiSecurityHeaders();
 
         if (app.Environment.IsDevelopment())
@@ -26,7 +30,11 @@ public static class MiddlewareConfigurations
         app.UseStatusCodePages();
 
         app.UseAuthentication();
+        // After authentication: callers are partitioned by validated sub, or by address.
+        app.UseRateLimiter();
         app.UseAuthorization();
+        // Inside the status code pages middleware, so a timeout's 504 gets a problem body.
+        app.UseRequestTimeouts();
         // After authorization: a cached response is only served to callers who passed the
         // endpoint's policies (see AuthorizedSharedResponsePolicy).
         app.UseOutputCache();

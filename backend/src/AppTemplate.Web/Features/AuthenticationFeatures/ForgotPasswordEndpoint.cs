@@ -26,8 +26,13 @@ public sealed class ForgotPasswordEndpoint(IMediator _mediator)
         Post("/password-reset");
         Version(ApiVersions.V1);
         AllowAnonymous();
-        // Per client IP (X-Forwarded-For from the backend for frontend) - limits email flooding.
-        Throttle(hitLimit: RequestsPerWindow, durationSeconds: WindowSeconds);
+        Options(x =>
+            x
+            // Per client address (see ClientPartition) - limits email flooding.
+            .RequireRateLimiting(RateLimitPolicies.PasswordReset)
+                // Calls Keycloak, whose HttpClient retries for up to 30 seconds.
+                .WithRequestTimeout(RequestTimeoutPolicies.ExternalCall)
+        );
 
         Summary(s =>
         {

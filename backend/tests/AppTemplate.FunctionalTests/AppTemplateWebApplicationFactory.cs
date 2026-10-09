@@ -7,6 +7,7 @@ using Hangfire;
 using Hangfire.InMemory;
 using Hangfire.Logging;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -55,9 +56,17 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
         // Jobs are enqueued into in-memory storage (below) but never executed in the
         // background - tests run job classes directly when they need to.
         builder.UseSetting("JobScheduling:RunServer", "false");
+        // Every request arrives from a simulated backend for frontend on loopback (see
+        // TestPeerAddress), the one trusted proxy, so each client's X-Forwarded-For is honored.
+        builder.UseSetting("ForwardedHeaders:KnownProxies:0", TestPeerAddress.TrustedProxy);
+        // Far above anything a test sends; RateLimitingTests lowers them in its own host.
+        builder.UseSetting("RateLimiting:AnonymousPermitLimit", "100000");
+        builder.UseSetting("RateLimiting:AuthenticatedPermitLimit", "100000");
 
         builder.ConfigureServices(services =>
         {
+            services.AddSingleton<IStartupFilter, TestPeerAddress>();
+
             services.RemoveAll<IPasswordResetService>();
             services.AddSingleton<IPasswordResetService>(PasswordResetService);
 
@@ -113,8 +122,8 @@ public class AppTemplateWebApplicationFactory : WebApplicationFactory<Program>, 
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, subject);
-        // Throttled endpoints key on the client IP (as forwarded by the backend for
-        // frontend) - every client gets its own, so tests never share a rate-limit window.
+        // Anonymous rate limits key on the client address (as forwarded by the trusted
+        // backend for frontend) - every client gets its own, so tests never share a window.
         var n = Interlocked.Increment(ref _nextClientAddress);
         client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.1.{n / 250}.{n % 250 + 1}");
         if (permissions.Length > 0)
