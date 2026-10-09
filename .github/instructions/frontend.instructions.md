@@ -15,7 +15,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 
 ## HTTP and authentication
 
-- Components never inject `HttpClient`. API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The backend for frontend proxies them, so there is no base URL, no CORS and no tokens.
+- Components never inject `HttpClient` (ESLint enforces this outside `*service.ts`). API calls live in the feature's service, which returns `Observable`s and uses relative `api/...` URLs. The backend for frontend proxies them, so there is no base URL, no CORS and no tokens.
 - The browser never holds tokens. Session state comes from `CurrentUserService` and `/backend-for-frontend/user`. Login, register and logout are full-page redirects through `BROWSER_REDIRECT`.
 - `authGuard` and `permissionGuard` only shape the UI. The API enforces every permission itself, so never rely on a guard for security.
 - Never put secrets or environment-specific URLs in frontend code.
@@ -29,7 +29,7 @@ These extend [`AGENTS.md`](../../AGENTS.md). The general Angular guidelines are 
 ## Forms and errors
 
 - Use reactive forms with explicit types. Client-side validation mirrors the API validator's rules for a better UX, but the server is the authority.
-- Show server validation errors next to the field they belong to, and expected failures (403, 404, 409) as clear messages. Never show raw error bodies.
+- Errors are RFC 9457 problem details. For a 400, `error.error.errors` maps camelCase field names (matching the form control names) to messages: show each next to its field. Show expected failures (403, 404, 409) as clear messages. Never show raw error bodies.
 
 ## Accessibility
 
