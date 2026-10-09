@@ -1099,7 +1099,6 @@
           "Mediator.Abstractions": "[3.0.2, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.12, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.8.0, )",
-          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "Scalar.AspNetCore": "[2.16.16, )",
           "Serilog": "[4.4.0, )",
           "Serilog.Extensions.Logging": "[10.0.0, )",
