@@ -6,6 +6,7 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Secret scanning: `secret-scan.yml` runs gitleaks over the full git history on every PR and on pushes to `main`/`develop`.
 - `AppTemplate.ArchitectureTests`: enforces the layer dependency rules (project references and compiled type dependencies) and the endpoint and handler placement conventions. See ADR 006.
 - `AGENTS.md` and `.github/instructions/`: agent-neutral coding rules, which `CLAUDE.md` now defers to.
 
