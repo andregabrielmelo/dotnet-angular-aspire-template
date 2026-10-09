@@ -30,6 +30,7 @@ Some reads happen far more often than the data changes. The SPA calls `GET /user
 - Every user entry and every cached user list carries the tag `users` (`CacheTags.Users`).
 - Creating, updating or deleting a user calls `ICacheInvalidator.InvalidateAsync("users")`. It is defined in UseCases and implemented in Web, where it calls `HybridCache.RemoveByTagAsync` and `IOutputCacheStore.EvictByTagAsync`.
 - User writes are rare compared to reads, so invalidating the whole tag is simpler and always correct compared to per-key bookkeeping.
+- Invalidation is **best-effort**. It runs after the write is saved, so a cache failure (Redis down) is logged, not thrown: a successful write never becomes a 500. Stale entries then live until they expire. Reads already tolerate an unreachable L2: HybridCache falls back to L1 and the database (`CacheOutageTests`).
 
 ## Consequences
 - Never apply `AuthorizedSharedResponsePolicy` to an endpoint whose response depends on the caller (such as `/users/me`). Use HybridCache inside the use case instead, keyed by what the result depends on.
