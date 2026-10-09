@@ -29,6 +29,7 @@ Dependencies point inward:
 - UseCases never references Infrastructure, Web, EF Core or Hangfire. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
 - Don't move a class to another layer to avoid writing the right abstraction.
 - Don't add projects, base classes, generic frameworks or DDD patterns without a concrete use and a clear benefit.
+- Before adding an interface, specification, domain event or pipeline behavior, check [When To Abstract](docs/content/design-decisions.md#when-to-abstract). Optional capabilities stay opt-in ([Supported vs Required](docs/content/design-decisions.md#supported-vs-required)).
 
 ## 3. API endpoints ([ADR 003](docs/content/architecture-decisions/adr-003-fastendpoints-mediator.md))
 
@@ -53,6 +54,7 @@ Dependencies point inward:
   - Use a query-service interface defined in UseCases and implemented in Infrastructure for read models, projections, joins, pagination and hand-written SQL (`IListUsersQueryService`).
   - Lookups that are not followed by a mutation call `.AsNoTracking()` in their specification.
   - Don't add a repository method for every query, and don't load whole aggregates for read-only endpoints.
+  - The full decision table is in [When To Abstract](docs/content/design-decisions.md#when-to-abstract).
 - Use cases never reference Hangfire. They enqueue through `IBackgroundJobScheduler` ([ADR 012](docs/content/architecture-decisions/adr-012-background-jobs-hangfire.md)).
 
 ## 5. Domain model ([ADR 005](docs/content/architecture-decisions/adr-005-vogen-strongly-typed-ids.md))
