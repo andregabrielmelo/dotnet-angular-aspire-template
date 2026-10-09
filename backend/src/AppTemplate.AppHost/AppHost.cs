@@ -21,9 +21,11 @@ var backendForFrontendSecret = builder.AddParameter(
 var userAdminSecret = builder.AddParameter("keycloak-user-admin-secret", secret: true);
 
 // Development SMTP catcher: Keycloak sends its emails (e.g. password reset links) here, and
-// they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint).
+// they can be read in Mailpit's web UI (the "mailpit" resource's http endpoint). The registry is
+// explicit because Podman, unlike Docker, does not assume docker.io for unqualified image names.
 var mailpit = builder
     .AddContainer("mailpit", "axllent/mailpit", "v1.31.2")
+    .WithImageRegistry("docker.io")
     .WithHttpEndpoint(targetPort: 8025, name: "http")
     .WithEndpoint(targetPort: 1025, name: "smtp", scheme: "tcp");
 
