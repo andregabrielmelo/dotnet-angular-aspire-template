@@ -124,6 +124,8 @@ Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Voge
 
 Health probes (`ServiceDefaults/Extensions.cs`, every environment): `/alive` (process), `/health` (readiness: Postgres only, tag `ready`), `/health/dependencies` (optional dependencies such as Redis, tag `dependency`, always 200 with `Degraded`). Redis is optional at runtime too: `Web/Caching/FailOpenRedis.cs` skips it while it's disconnected.
 
+Auditing (ADR 017, `Infrastructure/Auditing/`): `IAuditable` entities (`User`) get an `audit_entries` row per insert, update and delete in the same transaction, with only the properties allowlisted in `AddAuditing` and `[PersonalData]` values masked. The actor is `user:{sub}`, `system:{job id}`, `system:outbox` or `anonymous`. `IAuditLog` records explicit events (job mutations, denied `/v1/admin` requests). Readable at `GET /v1/admin/audit` (`audit:read`, 7-day default range, max 100 per page); `AuditRetentionJob` deletes entries after `Audit:RetentionDays`; `Audit:Enabled=false` turns it off.
+
 Business metrics: `UseCases/Telemetry/ApplicationMetrics.cs` (meter `AppTemplate.Application`; `users.provisioned`, `welcome_emails.sent`, `jobs.runs`, `jobs.duration`), exported with Npgsql and EF Core metrics and Npgsql spans by ServiceDefaults. Tags stay bounded.
 
 Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks.
