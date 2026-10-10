@@ -315,6 +315,56 @@ public class OutboxTests(OutboxTests.OutboxFactory factory)
     }
 
     [Fact]
+    public async Task WelcomeEmail_ForAUserDeletedBeforeDelivery_CompletesWithoutSending()
+    {
+        var subject = $"sub-{Guid.NewGuid():N}";
+        var me = await factory
+            .CreateAuthenticatedClient(subject)
+            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
+        await ExecuteSqlAsync($"DELETE FROM users WHERE id = {me!.Id}");
+
+        var id = Assert.Single(await MessagesMentioningAsync(subject)).Id;
+
+        Assert.True(await Processor.DeliverAsync(id, CancellationToken.None));
+        Assert.DoesNotContain(factory.EmailSender.Sent, email => email.To == me.Email);
+    }
+
+    [Fact]
+    public async Task WelcomeEmail_WhenSmtpFails_IsRetriedLaterAndNotCountedAsSent()
+    {
+        var subject = $"sub-{Guid.NewGuid():N}";
+        var me = await factory
+            .CreateAuthenticatedClient(subject)
+            .GetFromJsonAsync<CurrentUserResponse>("/v1/users/me");
+        var id = Assert.Single(await MessagesMentioningAsync(subject)).Id;
+        using var sent = factory.CollectMetric<long>("welcome_emails.sent");
+        using var failed = factory.CollectMetric<long>("outbox.messages.failed");
+        factory.EmailSender.FailWith = new InvalidOperationException("SMTP down");
+        try
+        {
+            Assert.False(await Processor.DeliverAsync(id, CancellationToken.None));
+        }
+        finally
+        {
+            factory.EmailSender.FailWith = null;
+        }
+
+        Assert.Empty(sent.GetMeasurementSnapshot());
+        Assert.Equal(
+            "user.provisioned.v1",
+            Assert.Single(failed.GetMeasurementSnapshot()).Tags[ApplicationMetrics.MessageTypeTag]
+        );
+        var message = await LoadAsync(id);
+        Assert.Equal(1, message.Attempts);
+        Assert.Contains("SMTP down", message.LastError);
+
+        // The SMTP server is back: the retry sends it.
+        Assert.True(await Processor.DeliverAsync(id, CancellationToken.None));
+        Assert.Single(factory.EmailSender.Sent, email => email.To == me!.Email);
+        Assert.Single(sent.GetMeasurementSnapshot());
+    }
+
+    [Fact]
     public async Task RequeueEndpoint_MakesDeadLettersDueAgain()
     {
         var value = $"requeue-{Guid.NewGuid():N}";

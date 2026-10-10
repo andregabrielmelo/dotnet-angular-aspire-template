@@ -4,6 +4,10 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ## [Unreleased]
 
+### Removed
+
+- `EnqueueMissedWelcomeEmailsJob` (the hourly `enqueue-missed-welcome-emails` recurring job), `WelcomeEmailJob` and `IBackgroundJobScheduler`. The welcome email now goes through the transactional outbox, so its enqueue can no longer be lost, and the safety net it needed is gone. On an existing deployment, the old recurring job stays in Hangfire storage and is skipped as unknown until `POST /v1/admin/jobs/restore` (or a restart) removes it.
+
 ### Added
 
 - Typed API contract: `scripts/export-openapi.sh` writes the committed `backend/openapi/v1.json`, and `npm run api:generate` turns it into TypeScript types that the Angular feature models alias. CI fails when either is stale.

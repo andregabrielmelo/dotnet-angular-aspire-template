@@ -1,5 +1,4 @@
-﻿using AppTemplate.Infrastructure.Jobs.FireAndForget;
-using AppTemplate.Infrastructure.Jobs.Options;
+﻿using AppTemplate.Infrastructure.Jobs.Options;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.Infrastructure.Jobs.Services;
 using AppTemplate.UseCases.Jobs;
@@ -95,14 +94,9 @@ public static class ServiceCollectionExtensions
 
         // Recurring jobs - add new ones here.
         services.AddRecurringJob<SyncUserProfilesJob>();
-        services.AddRecurringJob<EnqueueMissedWelcomeEmailsJob>();
-
-        // Fire-and-forget jobs - Hangfire resolves them from DI when they run.
-        services.AddScoped<WelcomeEmailJob>();
 
         services.AddScoped<RecurringJobRunner>();
         services.AddScoped<RecurringJobRegistrar>();
-        services.AddScoped<IBackgroundJobScheduler, HangfireBackgroundJobScheduler>();
         services.AddScoped<IJobManagementService, JobManagementService>();
 
         return services;
