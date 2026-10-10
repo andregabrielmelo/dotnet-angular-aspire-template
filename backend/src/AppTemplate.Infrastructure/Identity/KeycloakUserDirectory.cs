@@ -41,7 +41,7 @@ public sealed class KeycloakUserDirectory(
                     continue;
                 }
 
-                yield return new IdentityProviderUser(user.Id, DisplayName(user), user.Email);
+                yield return new IdentityProviderUser(user.Id, user.GetDisplayName(), user.Email);
             }
 
             if (page.Length < PageSize)
@@ -50,18 +50,4 @@ public sealed class KeycloakUserDirectory(
             }
         }
     }
-
-    private static string? DisplayName(KeycloakUser user)
-    {
-        var fullName = $"{user.FirstName} {user.LastName}".Trim();
-        return fullName.Length > 0 ? fullName : user.Username;
-    }
-
-    private sealed record KeycloakUser(
-        string Id,
-        string? Username,
-        string? Email,
-        string? FirstName,
-        string? LastName
-    );
 }
