@@ -107,7 +107,4 @@ public enum JobOutcome
 {
     Succeeded,
     Failed,
-
-    /// <summary>Nothing to do, such as a welcome email for a user deleted before the job ran.</summary>
-    Skipped,
 }
