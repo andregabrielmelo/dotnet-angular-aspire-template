@@ -12,12 +12,17 @@ public sealed class TestRecurringJobProbe
     /// <summary>When set, the next runs throw it (to test failure handling).</summary>
     public Exception? FailWith { get; set; }
 
+    /// <summary>When set, each run does this with the run's scoped services (to test what jobs change).</summary>
+    public Func<IServiceProvider, Task>? Action { get; set; }
+
     internal void RecordRun() => Interlocked.Increment(ref _runs);
 }
 
 /// <summary>A harmless recurring job registered only in the test host.</summary>
-public sealed class TestRecurringJobDefinition(TestRecurringJobProbe probe)
-    : IRecurringJobDefinition
+public sealed class TestRecurringJobDefinition(
+    TestRecurringJobProbe probe,
+    IServiceProvider services
+) : IRecurringJobDefinition
 {
     public const string Id = "test-recurring-job";
 
@@ -25,9 +30,16 @@ public sealed class TestRecurringJobDefinition(TestRecurringJobProbe probe)
 
     public string CronExpression => Cron.Daily();
 
-    public Task ExecuteAsync(CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         probe.RecordRun();
-        return probe.FailWith is { } exception ? Task.FromException(exception) : Task.CompletedTask;
+        if (probe.FailWith is { } exception)
+        {
+            throw exception;
+        }
+        if (probe.Action is { } action)
+        {
+            await action(services);
+        }
     }
 }

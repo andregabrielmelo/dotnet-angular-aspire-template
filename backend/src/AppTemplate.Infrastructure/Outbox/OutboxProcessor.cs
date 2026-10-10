@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.UseCases.Telemetry;
 using Mediator;
@@ -33,6 +34,9 @@ public sealed partial class OutboxProcessor(
 )
 {
     private readonly OutboxOptions _options = options.Value;
+
+    /// <summary>Who changes made by outbox handlers are audited as.</summary>
+    public const string SystemActor = "system:outbox";
 
     /// <summary>Claims and delivers batches until nothing is due. Returns how many it delivered.</summary>
     public async Task<int> ProcessPendingAsync(CancellationToken cancellationToken)
@@ -157,6 +161,7 @@ public sealed partial class OutboxProcessor(
         {
             // Its own scope, so the handler's DbContext is the one inside this transaction.
             await using var scope = scopeFactory.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<AuditActorContext>().SystemActor = SystemActor;
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDatabaseContext>();
             var consumer = handlerType.FullName!;
 

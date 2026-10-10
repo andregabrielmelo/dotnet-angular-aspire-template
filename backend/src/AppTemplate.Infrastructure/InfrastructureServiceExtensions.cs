@@ -1,4 +1,6 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
+﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Jobs.Extensions;
@@ -80,6 +82,13 @@ public static class InfrastructureServiceExtensions
 
         // Every integration event type an entity may raise must be registered here.
         services.AddOutbox(config, outbox => outbox.AddEvent<UserProvisioned>());
+
+        // Every IAuditable entity lists exactly the properties its audit entries may contain.
+        services.AddAuditing(
+            config,
+            audit =>
+                audit.Audit<User>(user => user.Name, user => user.Email, user => user.PhoneNumber)
+        );
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
