@@ -51,7 +51,7 @@ Clean Architecture should make change easier. It shouldn't make a simple databas
 
 | Building block | Add it when | Don't add it when |
 |---|---|---|
-| **Interface** | It sits on a layer boundary: UseCases or Core defines it and Infrastructure implements it (`ICurrentUser`, `IBackgroundJobScheduler`, `IEmailSender`), or a real second implementation exists | It only wraps EF Core, HybridCache or another framework API and adds nothing to it, or it exists only so a class can be mocked |
+| **Interface** | It sits on a layer boundary: UseCases or Core defines it and Infrastructure implements it (`ICurrentUser`, `IOutboxAdministration`, `IEmailSender`), or a real second implementation exists | It only wraps EF Core, HybridCache or another framework API and adds nothing to it, or it exists only so a class can be mocked |
 | **Repository + specification** | The write path loads an aggregate, changes it through domain methods and saves it (`UserByIdSpecification`), or several handlers reuse the same lookup | It's a one-off read. Project straight to a DTO in a query service (`IListUsersQueryService`) instead |
 | **Query service** | It's a read model, a projection, a join, pagination or hand-written SQL | The handler needs the aggregate's behavior, so use the repository |
 | **Domain event** | Another part of the system reacts to something that happened in the domain, and the aggregate shouldn't know who that is | It's only "save a record". The `User` slice raises none today, and that's fine |
@@ -64,7 +64,8 @@ Every use case still goes through Mediator. That one seam stays uniform on purpo
 A template should *support* a capability without *requiring* every application to use it:
 
 - **Redis** is optional. Without a `cache` connection string, HybridCache and output caching fall back to in-memory (`CachingConfigurations.cs`), which is correct for a single instance.
-- Each production capability added later (transactional outbox, auditing, file storage, ETag concurrency, idempotency keys) is **opt-in**. It's registered through one `Add<Capability>()` extension, and the app builds and its tests pass without it. Its documentation has a "Removing it" section, and no feature references its types unless that feature uses it.
+- The transactional outbox is registered through one `AddOutbox()` call; see "Removing it" in [Transactions, Events and Side Effects]({{< relref "reliability-semantics" >}}).
+- Each production capability added later (auditing, file storage, ETag concurrency, idempotency keys) is **opt-in**. It's registered through one `Add<Capability>()` extension, and the app builds and its tests pass without it. Its documentation has a "Removing it" section, and no feature references its types unless that feature uses it.
 
 # The Frontend
 

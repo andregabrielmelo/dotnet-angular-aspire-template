@@ -10,6 +10,16 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- Transactional outbox and inbox (ADR 016): entities raise integration events that are saved with them and delivered at least once by a Hangfire relay. Claims use `FOR UPDATE SKIP LOCKED` with leases, failures back off and are dead-lettered, a per-handler inbox makes redelivery safe, and `POST /v1/admin/outbox/dead-letters/requeue` retries dead letters. The welcome email is its first consumer. A domain event handler that fails after the save no longer turns the request into a 500. See `docs/content/reliability-semantics.md`.
+- Business metrics (`ApplicationMetrics`): users provisioned, welcome emails sent, job runs and durations, outbox messages. Plus Npgsql and EF Core metrics and Npgsql spans.
+- End-to-end tests (`AppTemplate.EndToEndTests`, `e2e.yml`): Aspire starts the whole stack and Playwright drives registration, sign-in, profile editing and sign-out. A `/profile` page lets users rename themselves. They found that "Create account" opened Keycloak's sign-in form (Keycloak ignores `prompt=create` sent through PAR), now fixed.
+- Health probes in every environment: `/alive`, `/health` (readiness: Postgres only) and `/health/dependencies` (Redis, reports Degraded). With Redis down, cache calls skip it at once instead of waiting out its timeout.
+- One redacting logging pipeline (Serilog to the console and OTLP) for the API and the backend for frontend, with one line per request. `[PersonalData]`/`[SecretData]`, sensitive property names and email/JWT/bearer patterns are redacted. `LoggingBehavior` now actually runs for commands and queries.
+- A migration drift check (`MigrationDriftTests`). It found, and a migration fixed, a leftover `DEFAULT ''` on `users.external_id`.
+- A global rate limiter (by validated `sub` or client address, 429 problem details with `Retry-After`), trusted forwarded headers from configured proxies only, and request timeouts (504). FastEndpoints `Throttle` is replaced by named rate-limit policies, because it keyed on the spoofable `X-Forwarded-For` header.
+- Security headers: a strict CSP and anti-framing headers on the SPA, `nosniff` everywhere, and `no-store` on authenticated API responses. `npm run csp:check` fails the build on inline scripts.
+- "When to abstract" and "supported vs required" guidance in the design decisions.
+
 - Typed API contract: `scripts/export-openapi.sh` writes the committed `backend/openapi/v1.json`, and `npm run api:generate` turns it into TypeScript types that the Angular feature models alias. CI fails when either is stale.
 - Secret scanning: `secret-scan.yml` runs gitleaks over the full git history on every PR and on pushes to `main`/`develop`.
 - `AppTemplate.ArchitectureTests`: enforces the layer dependency rules (project references and compiled type dependencies) and the endpoint and handler placement conventions. See ADR 006.

@@ -55,7 +55,7 @@ UseCases/<Feature>/<UseCase>/
   <UseCase>Handler.cs   // ICommandHandler / IQueryHandler, one Handle method
 ```
 
-- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, `HybridCache`, `ICacheInvalidator`, `ICurrentUser` and `IBackgroundJobScheduler`. They never take infrastructure types.
+- **Dependencies:** handlers take `IRepository<T>`, query-service interfaces, `HybridCache`, `ICacheInvalidator`, and `ICurrentUser`. They never take infrastructure types. Work that must follow a change is an integration event raised by the entity (ADR 016), not a job enqueued by the handler.
 - **Unit tests:** put them in `tests/AppTemplate.UnitTests/UseCases/<Feature>/<UseCase>HandlerTests.cs`.
 
 ## Adding a persistent type
