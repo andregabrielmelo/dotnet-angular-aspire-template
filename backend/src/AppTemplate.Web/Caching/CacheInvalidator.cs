@@ -1,4 +1,5 @@
 ﻿using AppTemplate.UseCases.Caching;
+using AppTemplate.UseCases.Idempotency;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -14,10 +15,23 @@ namespace AppTemplate.Web.Caching;
 public sealed class CacheInvalidator(
     HybridCache hybridCache,
     IOutputCacheStore outputCacheStore,
+    IUnitOfWork unitOfWork,
     ILogger<CacheInvalidator> logger
 ) : ICacheInvalidator
 {
-    public async ValueTask InvalidateAsync(string tag, CancellationToken cancellationToken)
+    public ValueTask InvalidateAsync(string tag, CancellationToken cancellationToken)
+    {
+        // Inside a transaction the write isn't visible yet: invalidating now would let a
+        // concurrent read re-cache the old data, so wait for the commit.
+        if (unitOfWork.InTransaction)
+        {
+            unitOfWork.AfterCommit(token => InvalidateNowAsync(tag, token));
+            return ValueTask.CompletedTask;
+        }
+        return InvalidateNowAsync(tag, cancellationToken);
+    }
+
+    private async ValueTask InvalidateNowAsync(string tag, CancellationToken cancellationToken)
     {
         try
         {
