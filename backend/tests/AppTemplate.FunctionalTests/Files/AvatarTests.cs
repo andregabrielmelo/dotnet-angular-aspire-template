@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.FunctionalTests.Images;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Authorization;

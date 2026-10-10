@@ -1,14 +1,13 @@
 using System.Diagnostics;
 using System.Text;
-using AppTemplate.Infrastructure.Files;
+using AppTemplate.Infrastructure.Images;
 using AppTemplate.UseCases.Files;
 using Ardalis.Result;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;
 using Xunit;
 
-namespace AppTemplate.FunctionalTests.Files;
+namespace AppTemplate.FunctionalTests.Images;
 
 /// <summary>
 /// The avatar image pipeline on its own (no Docker): size, signature and dimension checks in
@@ -18,7 +17,7 @@ namespace AppTemplate.FunctionalTests.Files;
 public class ImageProcessorTests
 {
     private readonly IImageProcessor _processor = new ServiceCollection()
-        .AddFileStorage(new ConfigurationBuilder().Build())
+        .AddImageProcessing()
         .BuildServiceProvider()
         .GetRequiredService<IImageProcessor>();
 
@@ -38,6 +37,44 @@ public class ImageProcessorTests
         Assert.Equal((512, 341), (result.Value.Width, result.Value.Height));
         using var decoded = SKBitmap.Decode(result.Value.Content);
         Assert.Equal(512, decoded.Width);
+    }
+
+    /// <summary>
+    /// The stored image is 40 x 20 with a red top-left quarter. After applying its EXIF
+    /// orientation the red quarter must sit in the corner a viewer would see it, and the
+    /// rotated orientations (5-8) swap width and height.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 40, 20, "top-left")]
+    [InlineData(2, 40, 20, "top-right")] // mirrored horizontally
+    [InlineData(3, 40, 20, "bottom-right")] // rotated 180°
+    [InlineData(4, 40, 20, "bottom-left")] // mirrored vertically
+    [InlineData(5, 20, 40, "top-left")] // transposed
+    [InlineData(6, 20, 40, "top-right")] // rotated 90° clockwise
+    [InlineData(7, 20, 40, "bottom-right")] // transversed
+    [InlineData(8, 20, 40, "bottom-left")] // rotated 90° counter-clockwise
+    public async Task ExifOrientation_IsAppliedBeforeReEncoding(
+        int orientation,
+        int width,
+        int height,
+        string redCorner
+    )
+    {
+        var result = await ProcessAsync(TestImages.JpegWithOrientation(40, 20, orientation));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal((width, height), (result.Value.Width, result.Value.Height));
+        using var decoded = SKBitmap.Decode(result.Value.Content);
+        var corners = new Dictionary<string, SKColor>
+        {
+            ["top-left"] = decoded.GetPixel(width / 4, height / 4),
+            ["top-right"] = decoded.GetPixel(width * 3 / 4, height / 4),
+            ["bottom-left"] = decoded.GetPixel(width / 4, height * 3 / 4),
+            ["bottom-right"] = decoded.GetPixel(width * 3 / 4, height * 3 / 4),
+        };
+        // Lossy WebP shifts colors slightly, so compare by dominant channel.
+        static bool IsRed(SKColor c) => c.Red > 180 && c.Green < 90 && c.Blue < 90;
+        Assert.Equal([redCorner], corners.Where(c => IsRed(c.Value)).Select(c => c.Key));
     }
 
     [Fact]
