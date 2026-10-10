@@ -2,7 +2,7 @@ using System.IO.Hashing;
 using System.Text;
 using SkiaSharp;
 
-namespace AppTemplate.FunctionalTests.Files;
+namespace AppTemplate.FunctionalTests.Images;
 
 /// <summary>Image fixtures, generated rather than committed.</summary>
 public static class TestImages

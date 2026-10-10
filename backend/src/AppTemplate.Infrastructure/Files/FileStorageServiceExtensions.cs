@@ -12,7 +12,7 @@ public static class FileStorageServiceExtensions
     private const string DependencyTag = "dependency";
 
     /// <summary>
-    /// S3-compatible object storage and image processing (ADR 018). Without
+    /// S3-compatible object storage (ADR 018). Without
     /// <c>FileStorage:ServiceUrl</c> it registers an "unavailable" storage and no health check,
     /// so the app runs without it.
     /// </summary>
@@ -36,7 +36,6 @@ public static class FileStorageServiceExtensions
                 "FileStorage needs an absolute ServiceUrl, an AccessKey and a SecretKey."
             )
             .ValidateOnStart();
-        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
 
         var settings =
             configuration.GetSection(FileStorageOptions.SectionName).Get<FileStorageOptions>()

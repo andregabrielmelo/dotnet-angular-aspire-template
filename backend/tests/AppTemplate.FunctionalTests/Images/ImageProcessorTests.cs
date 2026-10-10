@@ -1,14 +1,13 @@
 using System.Diagnostics;
 using System.Text;
-using AppTemplate.Infrastructure.Files;
+using AppTemplate.Infrastructure.Images;
 using AppTemplate.UseCases.Files;
 using Ardalis.Result;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;
 using Xunit;
 
-namespace AppTemplate.FunctionalTests.Files;
+namespace AppTemplate.FunctionalTests.Images;
 
 /// <summary>
 /// The avatar image pipeline on its own (no Docker): size, signature and dimension checks in
@@ -18,7 +17,7 @@ namespace AppTemplate.FunctionalTests.Files;
 public class ImageProcessorTests
 {
     private readonly IImageProcessor _processor = new ServiceCollection()
-        .AddFileStorage(new ConfigurationBuilder().Build())
+        .AddImageProcessing()
         .BuildServiceProvider()
         .GetRequiredService<IImageProcessor>();
 

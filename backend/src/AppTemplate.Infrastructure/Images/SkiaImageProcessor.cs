@@ -2,7 +2,7 @@ using AppTemplate.UseCases.Files;
 using Ardalis.Result;
 using SkiaSharp;
 
-namespace AppTemplate.Infrastructure.Files;
+namespace AppTemplate.Infrastructure.Images;
 
 /// <summary>
 /// <see cref="IImageProcessor"/> with SkiaSharp (MIT). Checks happen cheapest first: size,
