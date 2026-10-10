@@ -29,6 +29,9 @@ public static class AuthenticationConfigurations
     )
     {
         var keycloak = builder.Configuration.GetSection("Keycloak");
+        // Required: read here so a missing value stops startup, not the first sign-in.
+        var realm = builder.Configuration.GetRequiredValue("Keycloak:Realm");
+        var clientId = builder.Configuration.GetRequiredValue("Keycloak:ClientId");
 
         services
             .AddAuthentication(options =>
@@ -64,10 +67,10 @@ public static class AuthenticationConfigurations
             )
             .AddKeycloakOpenIdConnect(
                 serviceName: "keycloak",
-                realm: builder.Configuration.GetRequiredValue("Keycloak:Realm"),
+                realm: realm,
                 options =>
                 {
-                    options.ClientId = builder.Configuration.GetRequiredValue("Keycloak:ClientId");
+                    options.ClientId = clientId;
                     options.ClientSecret = keycloak["ClientSecret"];
                     options.ResponseType = OpenIdConnectResponseType.Code;
                     options.UsePkce = true;

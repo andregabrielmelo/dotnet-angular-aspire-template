@@ -17,15 +17,18 @@ public static class AuthenticationConfigurations
     )
     {
         var keycloak = builder.Configuration.GetSection("Keycloak");
+        // Required: read here so a missing value stops startup, not the first request.
+        var realm = builder.Configuration.GetRequiredValue("Keycloak:Realm");
+        var audience = builder.Configuration.GetRequiredValue("Keycloak:Audience");
 
         services
             .AddAuthentication()
             .AddKeycloakJwtBearer(
                 serviceName: "keycloak",
-                realm: builder.Configuration.GetRequiredValue("Keycloak:Realm"),
+                realm: realm,
                 options =>
                 {
-                    options.Audience = builder.Configuration.GetRequiredValue("Keycloak:Audience");
+                    options.Audience = audience;
                     // Keycloak runs over plain HTTP inside Aspire locally.
                     options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
                     // The Aspire service-discovery address is for local development. Elsewhere,
