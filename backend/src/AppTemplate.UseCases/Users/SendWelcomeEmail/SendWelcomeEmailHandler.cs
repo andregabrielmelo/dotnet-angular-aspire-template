@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Interfaces;
+using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Telemetry;
 using Microsoft.Extensions.Options;
 
@@ -25,7 +26,8 @@ public sealed class SendWelcomeEmailHandler(
     IEmailSender _emailSender,
     IOptions<WelcomeEmailOptions> _options,
     TimeProvider _timeProvider,
-    ApplicationMetrics _metrics
+    ApplicationMetrics _metrics,
+    ICacheInvalidator _cacheInvalidator
 ) : ICommandHandler<SendWelcomeEmailCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -57,6 +59,8 @@ public sealed class SendWelcomeEmailHandler(
 
         user.MarkWelcomeEmailSent(_timeProvider.GetUtcNow());
         await _repository.UpdateAsync(user, cancellationToken);
+        // The row (and so its version, the ETag) changed: cached copies are stale.
+        await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
 
         return Result.Success();
     }

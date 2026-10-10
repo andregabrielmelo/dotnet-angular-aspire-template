@@ -4,6 +4,7 @@ using AppTemplate.UseCases.Users;
 using AppTemplate.UseCases.Users.Update;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;
+using AppTemplate.Web.Http;
 using AppTemplate.Web.Validation;
 
 namespace AppTemplate.Web.Features.UserFeatures;
@@ -44,7 +45,10 @@ public class UpdateEndpoint(IMediator _mediator)
             s.Description =
                 "Updates a user's name and, optionally, phone number (which needs a country code). "
                 + "Users may update their own profile; "
-                + "updating anyone else's requires the users:write permission.";
+                + "updating anyone else's requires the users:write permission. "
+                + "Send the ETag from GET in If-Match to update only if the user is unchanged since: "
+                + "a stale or weak tag gets 412, * matches any existing user. Without If-Match, a "
+                + "change that races another write gets 409. The response's ETag is the new version.";
             s.ExampleRequest = new UpdateUserRequest
             {
                 Id = 1,
@@ -60,6 +64,8 @@ public class UpdateEndpoint(IMediator _mediator)
             s.Responses[400] = "Invalid request data";
             s.Responses[403] = "Not your profile, and no users:write permission";
             s.Responses[404] = "User not found";
+            s.Responses[409] = "Changed by someone else while saving (no If-Match sent)";
+            s.Responses[412] = "If-Match doesn't match the current version";
         });
 
         Tags("Users");
@@ -71,6 +77,8 @@ public class UpdateEndpoint(IMediator _mediator)
                 .ProducesProblem(400)
                 .ProducesProblem(403)
                 .ProducesProblem(404)
+                .ProducesProblem(409)
+                .ProducesProblem(412)
         );
     }
 
@@ -79,14 +87,33 @@ public class UpdateEndpoint(IMediator _mediator)
         CancellationToken cancellationToken
     )
     {
+        var ifMatch = EntityTagHeader.ParseIfMatch(HttpContext.Request.Headers.IfMatch);
+        if (ifMatch.IsMalformed)
+        {
+            return TypedResults.Problem(
+                ProblemDetailsConfigurations.ValidationProblem(
+                    new Dictionary<string, string[]>
+                    {
+                        ["If-Match"] = ["If-Match must be * or a list of quoted entity tags."],
+                    },
+                    HttpContext
+                )
+            );
+        }
+
         var command = new UpdateUserCommand(
             UserId.From(request.Id),
             UserName.From(request.Name),
             request.PhoneNumber,
             request.PhoneCountryCode,
-            request.PhoneExtension
+            request.PhoneExtension,
+            ifMatch.Precondition
         );
         var result = await _mediator.Send(command, cancellationToken);
+        if (result.IsSuccess)
+        {
+            HttpContext.Response.Headers.ETag = EntityTagHeader.Format(result.Value.Version);
+        }
 
         return result.ToOkResult<UserDto, UpdateUserResponse>(Map.FromEntity);
     }

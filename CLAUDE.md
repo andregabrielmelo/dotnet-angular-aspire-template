@@ -128,6 +128,8 @@ Auditing (ADR 017, `Infrastructure/Auditing/`): `IAuditable` entities (`User`) g
 
 File storage (ADR 018): `IFileStorage` over S3 (`Infrastructure/Files/`, AWSSDK.S3, path-style). Locally the AppHost runs Garage (`AppHost/Garage/`: image, `--single-node --default-bucket`, `garage.toml` with no admin API); the functional tests link the same files. It's optional: without `FileStorage:ServiceUrl` file endpoints answer 503, and the `file-storage` check is `dependency`-tagged. Avatars (`/v1/users/{id}/avatar`, owner-only writes) go through `SkiaImageProcessor` (signature, header dimensions before decode, WebP re-encode); old objects are deleted via the outbox (`StoredFileOrphaned`).
 
+Optimistic concurrency (ADR 019): `User.Version` is Postgres `xmin` (`IsRowVersion()`; its migration is snapshot-only, since EF would scaffold an invalid `AddColumn xmin`). `GET`/`PUT /v1/users/{id}` return it as a strong ETag; `PUT` honours `If-Match` (`Web/Http/EntityTagHeader`): a mismatch gives 412, a race without `If-Match` gives 409. The repository turns EF's concurrency exception into `ConcurrencyConflictException`.
+
 Business metrics: `UseCases/Telemetry/ApplicationMetrics.cs` (meter `AppTemplate.Application`; `users.provisioned`, `welcome_emails.sent`, `jobs.runs`, `jobs.duration`), exported with Npgsql and EF Core metrics and Npgsql spans by ServiceDefaults. Tags stay bounded.
 
 Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks.

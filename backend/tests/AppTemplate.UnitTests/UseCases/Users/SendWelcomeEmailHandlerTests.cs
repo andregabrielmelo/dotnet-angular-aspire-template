@@ -36,7 +36,8 @@ public class SendWelcomeEmailHandlerTests
             _emailSender,
             Options.Create(new WelcomeEmailOptions { From = "hello@example.com" }),
             _timeProvider,
-            _metrics.Application
+            _metrics.Application,
+            Substitute.For<AppTemplate.UseCases.Caching.ICacheInvalidator>()
         )
             .Handle(Command, CancellationToken.None)
             .AsTask();
