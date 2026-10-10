@@ -9,6 +9,9 @@ public sealed class FakeEmailSender : IEmailSender
 {
     public ConcurrentQueue<SentEmail> Sent { get; } = new();
 
+    /// <summary>When set, every send throws this, like an SMTP outage.</summary>
+    public Exception? FailWith { get; set; }
+
     public Task SendEmailAsync(
         string to,
         string from,
@@ -17,6 +20,10 @@ public sealed class FakeEmailSender : IEmailSender
         CancellationToken cancellationToken = default
     )
     {
+        if (FailWith is not null)
+        {
+            throw FailWith;
+        }
         Sent.Enqueue(new SentEmail(to, from, subject, body));
         return Task.CompletedTask;
     }

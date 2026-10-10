@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using AppTemplate.UseCases.Telemetry;
 using Hangfire;
 
 namespace AppTemplate.Infrastructure.Jobs;
@@ -11,6 +12,7 @@ namespace AppTemplate.Infrastructure.Jobs;
 /// </summary>
 public sealed partial class RecurringJobRunner(
     IEnumerable<IRecurringJobDefinition> definitions,
+    ApplicationMetrics metrics,
     ILogger<RecurringJobRunner> logger
 )
 {
@@ -40,10 +42,12 @@ public sealed partial class RecurringJobRunner(
         {
             await definition.ExecuteAsync(cancellationToken);
             LogCompleted(logger, jobId, stopwatch.ElapsedMilliseconds);
+            metrics.JobRun(jobId, JobOutcome.Succeeded, stopwatch.Elapsed);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogFailed(logger, exception, jobId, stopwatch.ElapsedMilliseconds);
+            metrics.JobRun(jobId, JobOutcome.Failed, stopwatch.Elapsed);
             throw;
         }
     }

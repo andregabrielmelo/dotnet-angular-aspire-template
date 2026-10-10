@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Interfaces;
+using AppTemplate.UseCases.Telemetry;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.UseCases.Users.SendWelcomeEmail;
@@ -23,7 +24,8 @@ public sealed class SendWelcomeEmailHandler(
     IRepository<User> _repository,
     IEmailSender _emailSender,
     IOptions<WelcomeEmailOptions> _options,
-    TimeProvider _timeProvider
+    TimeProvider _timeProvider,
+    ApplicationMetrics _metrics
 ) : ICommandHandler<SendWelcomeEmailCommand, Result>
 {
     public async ValueTask<Result> Handle(
@@ -50,6 +52,8 @@ public sealed class SendWelcomeEmailHandler(
             $"Hi {user.Name.Value},\n\nYour account is ready. Welcome aboard!",
             cancellationToken
         );
+        // Only once the mail server has accepted it: a failed send throws before this line.
+        _metrics.WelcomeEmailSent();
 
         user.MarkWelcomeEmailSent(_timeProvider.GetUtcNow());
         await _repository.UpdateAsync(user, cancellationToken);

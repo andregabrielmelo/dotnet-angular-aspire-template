@@ -2,6 +2,7 @@
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Telemetry;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -18,6 +19,7 @@ public static class ServiceConfigurations
             .AddMediatorSourceGenerator(logger);
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
+        services.AddSingleton<ApplicationMetrics>();
 
         services.AddKeycloakAdministration();
 

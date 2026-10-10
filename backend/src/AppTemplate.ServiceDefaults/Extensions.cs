@@ -62,7 +62,13 @@ public static class Extensions
                 metrics
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    // Business metrics (UseCases/Telemetry/ApplicationMetrics.cs).
+                    .AddMeter("AppTemplate.*")
+                    // Connection pool and command metrics; Npgsql emits them itself.
+                    .AddMeter("Npgsql")
+                    // EF Core's own metrics (queries, SaveChanges, optimistic concurrency failures).
+                    .AddMeter("Microsoft.EntityFrameworkCore");
             })
             .WithTracing(tracing =>
             {
@@ -76,7 +82,10 @@ public static class Extensions
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation()
+                    // A span per SQL command; Npgsql emits them itself. (Redis spans come from
+                    // Aspire's Redis client integration.)
+                    .AddSource("Npgsql");
             });
 
         builder.AddOpenTelemetryExporters();

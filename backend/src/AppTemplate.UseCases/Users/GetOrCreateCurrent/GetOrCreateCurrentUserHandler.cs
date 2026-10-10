@@ -3,6 +3,7 @@ using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Telemetry;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AppTemplate.UseCases.Users.GetOrCreateCurrent;
@@ -18,7 +19,8 @@ public class GetOrCreateCurrentUserHandler(
     IRepository<User> _repository,
     HybridCache _cache,
     ICacheInvalidator _cacheInvalidator,
-    IBackgroundJobScheduler _jobs
+    IBackgroundJobScheduler _jobs,
+    ApplicationMetrics _metrics
 ) : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
 {
     public async ValueTask<Result<CurrentUserDto>> Handle(
@@ -64,6 +66,7 @@ public class GetOrCreateCurrentUserHandler(
 
         var newUser = User.Create(command.ExternalId, command.Name, command.Email);
         var createdUser = await _repository.AddAsync(newUser, cancellationToken);
+        _metrics.UserProvisioned();
 
         // User lists cached before this user existed are now stale.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
