@@ -1,5 +1,7 @@
+using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.UseCases.Auditing;
+using AppTemplate.UseCases.Auditing.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -27,7 +29,7 @@ public static class AuditingServiceExtensions
             .ValidateOnStart();
         services.TryAddScoped<AuditActorContext>();
         // Reading stays available when recording is off: the log just stops growing.
-        services.AddScoped<IAuditQueryService, AuditQueryService>();
+        services.AddScoped<IListAuditEntriesQueryService, ListAuditEntriesQueryService>();
 
         if (!configuration.GetValue(AuditOptions.SectionName + ":Enabled", true))
         {
