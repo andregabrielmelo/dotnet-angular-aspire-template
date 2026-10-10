@@ -1,6 +1,7 @@
-﻿using System.Reflection;
+using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure.Auditing;
+using AppTemplate.Infrastructure.Inbox;
 using AppTemplate.Infrastructure.Outbox;
 
 namespace AppTemplate.Infrastructure.Data;

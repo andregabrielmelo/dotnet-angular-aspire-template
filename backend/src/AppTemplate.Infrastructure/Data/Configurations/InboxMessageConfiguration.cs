@@ -1,4 +1,4 @@
-using AppTemplate.Infrastructure.Outbox;
+using AppTemplate.Infrastructure.Inbox;
 
 namespace AppTemplate.Infrastructure.Data.Configurations;
 
