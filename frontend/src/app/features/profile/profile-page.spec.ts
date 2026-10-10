@@ -17,7 +17,13 @@ describe('ProfilePage', () => {
       imports: [ProfilePage],
       providers: [
         provideRouter([]),
-        { provide: UsersService, useValue: { update } },
+        {
+          provide: UsersService,
+          useValue: {
+            update,
+            getAvatar: () => throwError(() => new HttpErrorResponse({ status: 404 })),
+          },
+        },
         {
           provide: CurrentUserService,
           useValue: { load: () => of(profile), profile: signal(profile), updateName },

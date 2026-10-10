@@ -10,6 +10,7 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
+- File storage (ADR 018): S3-compatible object storage, Garage in the AppHost (single-node, default bucket, no admin API), optional at runtime. Avatar upload on the profile page: owner-only, rate-limited, signature- and dimension-checked before decoding, re-encoded as WebP without metadata, served with ETag and 304s, and old objects deleted through the outbox.
 - Audit log (ADR 017): allowlisted, masked entity changes of `IAuditable` entities written in the same transaction (a failed audit write fails the change), explicit events for job management and denied admin requests, `GET /v1/admin/audit` (`audit:read`) with bounded paging and time range, a daily retention job, and `Audit:Enabled` to turn it off.
 - Transactional outbox and inbox (ADR 016): entities raise integration events that are saved with them and delivered at least once by a Hangfire relay. Claims use `FOR UPDATE SKIP LOCKED` with leases, failures back off and are dead-lettered, a per-handler inbox makes redelivery safe, and `POST /v1/admin/outbox/dead-letters/requeue` retries dead letters. The welcome email is its first consumer. A domain event handler that fails after the save no longer turns the request into a 500. See `docs/content/reliability-semantics.md`.
 - Business metrics (`ApplicationMetrics`): users provisioned, welcome emails sent, job runs and durations, outbox messages. Plus Npgsql and EF Core metrics and Npgsql spans.

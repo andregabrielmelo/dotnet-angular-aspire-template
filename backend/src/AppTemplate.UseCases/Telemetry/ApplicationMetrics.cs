@@ -26,6 +26,10 @@ public sealed class ApplicationMetrics
     private readonly Counter<long> _outboxFailed;
     private readonly Counter<long> _outboxDeadLettered;
     private readonly Histogram<double> _outboxDispatchDuration;
+    private readonly Counter<long> _filesUploaded;
+    private readonly Histogram<long> _fileUploadSize;
+    private readonly Counter<long> _filesRejected;
+    private readonly Counter<long> _filesDeleted;
 
     public ApplicationMetrics(IMeterFactory meterFactory)
     {
@@ -70,6 +74,26 @@ public sealed class ApplicationMetrics
             unit: "s",
             description: "How long delivering a processed outbox message took, by message type."
         );
+        _filesUploaded = meter.CreateCounter<long>(
+            "files.uploaded",
+            unit: "{file}",
+            description: "Files stored after validation and re-encoding."
+        );
+        _fileUploadSize = meter.CreateHistogram<long>(
+            "files.upload.size",
+            unit: "By",
+            description: "Size of stored files, after re-encoding."
+        );
+        _filesRejected = meter.CreateCounter<long>(
+            "files.rejected",
+            unit: "{file}",
+            description: "Uploads refused, by reason (too_large, unsupported_type, too_many_pixels, ...)."
+        );
+        _filesDeleted = meter.CreateCounter<long>(
+            "files.deleted",
+            unit: "{file}",
+            description: "Stored files deleted because nothing referenced them any more."
+        );
     }
 
     public void UserProvisioned() => _usersProvisioned.Add(1);
@@ -89,6 +113,18 @@ public sealed class ApplicationMetrics
 
     public void OutboxMessageDeadLettered(string messageType) =>
         _outboxDeadLettered.Add(1, new TagList { { MessageTypeTag, messageType } });
+
+    public void FileUploaded(long bytes)
+    {
+        _filesUploaded.Add(1);
+        _fileUploadSize.Record(bytes);
+    }
+
+    /// <param name="reason">A fixed reason code from the image processor, never input.</param>
+    public void FileRejected(string reason) =>
+        _filesRejected.Add(1, new TagList { { "reason", reason } });
+
+    public void FileDeleted() => _filesDeleted.Add(1);
 
     /// <param name="job">A job id from code (a recurring job id, or a fire-and-forget job name), never input.</param>
     public void JobRun(string job, JobOutcome outcome, TimeSpan duration)

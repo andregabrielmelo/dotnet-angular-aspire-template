@@ -79,6 +79,12 @@ Dependencies point inward:
 - Security-relevant actions that aren't entity changes (admin mutations, refusals) call `IAuditLog.RecordAsync` with an `AuditActions` name and a bounded `AuditTarget`.
 - Audited changes must go through tracked `SaveChanges`: `ExecuteUpdate`/`ExecuteDelete` bypass the audit log.
 
+## 6b. File storage ([ADR 018](docs/content/architecture-decisions/adr-018-file-storage.md))
+
+- Store files through `IFileStorage`, under opaque keys (`prefix/{guid}`), never a name or path from the client. Catch `FileStorageUnavailableException` and return `Result.Unavailable`.
+- Treat uploads as hostile: cap bytes, check the signature (never the client's `Content-Type`), and for images go through `IImageProcessor`, which checks dimensions before decoding and re-encodes. Rate-limit upload endpoints.
+- When an entity stops referencing an object, raise `StoredFileOrphaned` so the outbox deletes it.
+
 ## 7. Caching ([ADR 011](docs/content/architecture-decisions/adr-011-caching.md))
 
 - Use cases cache through `HybridCache` directly (`GetUserHandler`). Cached values are primitives-only records (`CachedUser`) so they serialize to Redis.

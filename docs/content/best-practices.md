@@ -79,6 +79,9 @@ Explicit guidelines for projects built from this template, so every project that
   | `outbox.messages.failed` | `{message}` | a delivery attempt failed and will be retried | `message_type` |
   | `outbox.messages.dead_lettered` | `{message}` | the relay gave up (alert on any) | `message_type` |
   | `outbox.dispatch.duration` | `s` | a message was processed | `message_type` |
+  | `files.uploaded` / `files.upload.size` | `{file}` / `By` | an upload was validated, re-encoded and stored | - |
+  | `files.rejected` | `{file}` | an upload was refused | `reason` (`too_large`, `unsupported_type`, `too_many_pixels`, `unreadable`) |
+  | `files.deleted` | `{file}` | an orphaned object was deleted | - |
 
 - **Count what happened, where it happened.** Increment right after the call that makes it true (`AddAsync` returned, the SMTP send returned), so a failure never counts. Test each increment point with `MetricCollector<T>` (`TestMetrics` in unit tests, `factory.CollectMetric<T>` in functional tests), including that a failure records nothing.
 - **Tags must stay bounded.** Never a user id, email, file name or anything else per-user or from input: every distinct value is a new time series. Job ids and message types are fine because they come from code; an unknown job id or message type read from storage is never recorded as such.
@@ -93,7 +96,7 @@ Explicit guidelines for projects built from this template, so every project that
   |---|---|---|---|
   | `/alive` | the process itself (`live`) | 503 | liveness: restart the instance |
   | `/health` | required dependencies (`ready`): Postgres | 503 | readiness: stop sending traffic |
-  | `/health/dependencies` | optional dependencies (`dependency`): Redis | never (200, `Degraded`) | dashboards and alerts |
+  | `/health/dependencies` | optional dependencies (`dependency`): Redis, file storage | never (200, `Degraded`) | dashboards and alerts |
 
 - **Adding a dependency:** tag its check `ready` only if the app truly can't serve without it; anything else is `dependency` with `failureStatus: HealthStatus.Degraded`, and the code that uses it must fail open (see `Web/Caching/FailOpenRedis.cs`). Never put a dependency in `live`: a database outage would restart every instance and make things worse.
 - Give each check a short timeout (Postgres has 5 seconds), so a hanging dependency can't hang the probe.
