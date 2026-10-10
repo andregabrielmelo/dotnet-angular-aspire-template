@@ -73,11 +73,15 @@ Explicit guidelines for projects built from this template, so every project that
   |---|---|---|---|
   | `users.provisioned` | `{user}` | a user row is created on first sign-in | - |
   | `welcome_emails.sent` | `{email}` | the mail server **accepted** the email (not when the job was enqueued) | - |
-  | `jobs.runs` | `{run}` | a recurring job or the welcome email job finishes | `job`, `outcome` (`succeeded`/`failed`/`skipped`) |
+  | `jobs.runs` | `{run}` | a recurring job finishes | `job`, `outcome` (`succeeded`/`failed`) |
   | `jobs.duration` | `s` | same | same |
+  | `outbox.messages.processed` | `{message}` | every handler of an outbox message completed | `message_type` |
+  | `outbox.messages.failed` | `{message}` | a delivery attempt failed and will be retried | `message_type` |
+  | `outbox.messages.dead_lettered` | `{message}` | the relay gave up (alert on any) | `message_type` |
+  | `outbox.dispatch.duration` | `s` | a message was processed | `message_type` |
 
 - **Count what happened, where it happened.** Increment right after the call that makes it true (`AddAsync` returned, the SMTP send returned), so a failure never counts. Test each increment point with `MetricCollector<T>` (`TestMetrics` in unit tests, `factory.CollectMetric<T>` in functional tests), including that a failure records nothing.
-- **Tags must stay bounded.** Never a user id, email, file name or anything else per-user or from input: every distinct value is a new time series. Job ids are fine because they come from code; an unknown job id read from storage is never recorded.
+- **Tags must stay bounded.** Never a user id, email, file name or anything else per-user or from input: every distinct value is a new time series. Job ids and message types are fine because they come from code; an unknown job id or message type read from storage is never recorded as such.
 - Adding a metric for a new feature: add the instrument and a method to `ApplicationMetrics`, call it from the handler, and add a row to this table.
 
 ## Health checks

@@ -92,12 +92,12 @@ Caching (ADR 011):
 
 Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `hangfire`). Everything lives in `Infrastructure/Jobs/`:
 - **Recurring jobs** implement `IRecurringJobDefinition` (`JobId`, `CronExpression`, `ExecuteAsync(CancellationToken)`) in `Jobs/RecurringJobs/`, and are registered with `services.AddRecurringJob<T>()` in `Jobs/Extensions/ServiceCollectionExtensions.AddJobScheduling`. `UseJobSchedulingAsync()` (in `Program.cs`) schedules them all through `RecurringJobRunner`, the only type Hangfire stores for recurring jobs (argument: the job id). It also removes runner jobs whose definition no longer exists, and so does "Restore". Job ids are contracts: renaming one drops the old job along with its pause state.
-- **Fire-and-forget jobs** (`Jobs/FireAndForget/`) are thin adapters: primitive arguments, a Mediator dispatch, and a throw on failure so Hangfire retries. Use cases enqueue through `IBackgroundJobScheduler` and never reference Hangfire.
+- **Work that must follow a database change** (the welcome email) is an integration event in the transactional outbox (ADR 016, `Infrastructure/Outbox/`), not a job enqueued from a use case: the entity raises it, `OutboxInterceptor` saves it in the same transaction, and Hangfire relays it (`ProcessOutboxJob` right after commit, `OutboxSweepJob` every minute). Use cases never reference Hangfire. Semantics: `docs/content/reliability-semantics.md`.
 - **Idempotency:** Hangfire runs every job at least once, so jobs must be safe to repeat. Nothing request-scoped (such as `ICurrentUser`) is available in jobs.
 - **Current jobs:**
-  - `WelcomeEmailJob`: enqueued when `/v1/users/me` provisions a user; `critical` queue; guarded by `User.WelcomeEmailSentAtUtc`.
+  - `outbox-sweep` (`OutboxSweepJob`): every minute; delivers due outbox messages (recovery and retries).
+  - The welcome email: `UserProvisioned` from the outbox, handled by `SendWelcomeEmailWhenUserProvisioned`; guarded by `User.WelcomeEmailSentAtUtc`.
   - `SyncUserProfilesJob`: hourly; copies names and emails from Keycloak.
-  - `EnqueueMissedWelcomeEmailsJob`: hourly; re-enqueues welcome emails whose enqueue was lost (users 2 hours to 7 days old, by `User.CreatedAtUtc`, still unsent).
 - **Queues:** Hangfire.PostgreSql fetches queues alphabetically, so the name sets the priority. `critical` sorts before `default`.
 - **Management:** `IJobManagementService` backs the `/v1/admin/jobs` endpoints (`jobs:read`, and `jobs:manage` for trigger, pause, resume, remove and restore) and the Angular `/jobs` pages. The endpoints reach it through Mediator queries and commands in `UseCases/Jobs/<Action>/`. Pause state is a set in Hangfire's storage (`PausedRecurringJobs`), and the schedule is never changed. `[SkipWhenPaused]` on `RecurringJobRunner` is a client filter that cancels runs created from a paused recurring job. Trigger still works while paused because it enqueues the run directly. Avoid static state; ADR 013 explains the deviations from netrock.
 - **Options:** `JobScheduling:RunServer`, `WorkerCount` and `PrepareSchema` (whether startup creates Hangfire's tables).

@@ -20,7 +20,7 @@ Dependencies point inward:
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>`, `LoggingBehavior` | nothing in the solution |
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications, interfaces Infrastructure implements | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; application abstractions (`ICurrentUser`, `ICacheInvalidator`, `IBackgroundJobScheduler`, query services) | Core, SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; application abstractions (`ICurrentUser`, `ICacheInvalidator`, `IOutboxAdministration`, query services) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, Hangfire, the Keycloak Admin API | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, composition root | everything above |
 | `AppTemplate.BackendForFrontend` | OpenID Connect session, YARP proxy to Web | ServiceDefaults only |
@@ -56,7 +56,7 @@ Dependencies point inward:
   - Lookups that are not followed by a mutation call `.AsNoTracking()` in their specification.
   - Don't add a repository method for every query, and don't load whole aggregates for read-only endpoints.
   - The full decision table is in [When To Abstract](docs/content/design-decisions.md#when-to-abstract).
-- Use cases never reference Hangfire. They enqueue through `IBackgroundJobScheduler` ([ADR 012](docs/content/architecture-decisions/adr-012-background-jobs-hangfire.md)).
+- Use cases never reference Hangfire. Work that must reliably follow a change (an email, a call to another system) is an integration event: the entity raises it with `RaiseIntegrationEvent`, register the record in `AddOutbox`, and handle it with an `INotificationHandler<T>` that is safe to run twice ([ADR 016](docs/content/architecture-decisions/adr-016-transactional-outbox.md), [semantics](docs/content/reliability-semantics.md)).
 
 ## 5. Domain model ([ADR 005](docs/content/architecture-decisions/adr-005-vogen-strongly-typed-ids.md))
 
@@ -64,7 +64,7 @@ Dependencies point inward:
 - Aggregates protect their own invariants. No public setters that bypass them.
 - IDs and primitives with a real invariant are Vogen value objects with a `Validate` method. Register EF conversions centrally in `Infrastructure/Data/Configurations/VogenEfCoreConverters.cs`. New entity IDs also need `HasValueGenerator<VogenIdValueGenerator<...>>()` in their `IEntityTypeConfiguration`.
 - Plain DTOs and projections (`UserDto`, `UserRecord`) stay plain. Don't wrap everything.
-- Domain events are for meaningful domain occurrences. They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`). They are not a reliable delivery mechanism.
+- Domain events are for meaningful domain occurrences. They are dispatched in-process after `SaveChanges` succeeds (`EventDispatchInterceptor`); a failing handler is logged and never fails the request. They are not a reliable delivery mechanism: use an integration event (outbox) for anything that must happen.
 
 ## 6. Persistence ([ADR 004](docs/content/architecture-decisions/adr-004-postgresql.md))
 

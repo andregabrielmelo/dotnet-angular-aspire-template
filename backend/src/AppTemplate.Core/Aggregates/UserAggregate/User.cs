@@ -1,4 +1,6 @@
-﻿namespace AppTemplate.Core.Aggregates.UserAggregate;
+﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
+
+namespace AppTemplate.Core.Aggregates.UserAggregate;
 
 /// <summary>
 /// The application's own view of a person. Credentials live in the OpenID Connect provider
@@ -36,7 +38,11 @@ public class User(string externalId, UserName name, EmailAddress email)
                 nameof(externalId)
             );
 
-        return new User(externalId, name, email);
+        var user = new User(externalId, name, email);
+        // Saved to the outbox with the user, so the welcome email can't be lost (see
+        // SendWelcomeEmailWhenUserProvisioned).
+        user.RaiseIntegrationEvent(new UserProvisioned(externalId));
+        return user;
     }
 
     public User UpdateName(UserName newName)

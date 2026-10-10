@@ -1,6 +1,8 @@
-﻿using AppTemplate.Infrastructure.Data;
+﻿using AppTemplate.Core.Aggregates.UserAggregate.Events;
+using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Jobs.Extensions;
+using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -28,15 +30,12 @@ public static class InfrastructureServiceExtensions
             );
         }
 
-        services.AddScoped<EventDispatchInterceptor>();
+        services.AddScoped<ISaveChangesInterceptor, EventDispatchInterceptor>();
         services.AddScoped<IDomainEventDispatcher, MediatorDomainEventDispatcher>();
 
         services.AddDbContext<ApplicationDatabaseContext>(
             (provider, options) =>
             {
-                var eventDispatchInterceptor =
-                    provider.GetRequiredService<EventDispatchInterceptor>();
-
                 // Use PostgreSQL as the database provider
                 options
                     .UseNpgsql(
@@ -45,7 +44,8 @@ public static class InfrastructureServiceExtensions
                     )
                     .UseSnakeCaseNamingConvention();
 
-                options.AddInterceptors(eventDispatchInterceptor);
+                // Post-commit domain event dispatch, plus the outbox's, when AddOutbox registered it.
+                options.AddInterceptors(provider.GetServices<ISaveChangesInterceptor>());
 
                 // TODO: Reavaluate the need for this
                 // Change PendingModelChangesWarning to Log to avoid exceptions when the model changes without a new migration
@@ -77,6 +77,9 @@ public static class InfrastructureServiceExtensions
             .AddScoped<IListUsersQueryService, ListUsersQueryService>();
 
         services.AddJobScheduling(config, connectionString);
+
+        // Every integration event type an entity may raise must be registered here.
+        services.AddOutbox(config, outbox => outbox.AddEvent<UserProvisioned>());
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

@@ -41,9 +41,9 @@ ADR 012 introduced Hangfire with two hand-registered jobs. Adding a recurring jo
 - small, primitive job arguments, and idempotent jobs
 - per-job retry counts chosen deliberately:
   - recurring runs: 2 (the next scheduled run catches up)
-  - welcome email: 5, with explicit back-off delays
+  - welcome email: 5, with explicit back-off delays (since ADR 016, the outbox retries it instead)
 - queue names decide priority, because Hangfire.PostgreSql fetches queues alphabetically: `critical` (emails) sorts before `default`
-- a failed enqueue is caught by the hourly `enqueue-missed-welcome-emails` sweep, which picks users still without a welcome email 2 hours after creation (longer than the email job's retries) and at most 7 days old; `users.created_at_utc` (set by Postgres) makes the window possible
+- a failed enqueue was caught by an hourly `enqueue-missed-welcome-emails` sweep (users still without a welcome email 2 hours after creation and at most 7 days old). ADR 016 replaced it: the welcome email is now an outbox message saved with the user, so its enqueue can't be lost
 - runs of the same job never overlap: `[DisableConcurrentExecution("recurring-job:{0}", …)]` locks per job id, confirmed in Hangfire 1.8's source
 - nothing request-scoped (such as `ICurrentUser`) is used in jobs, because request information isn't available when a job's class is created
 
