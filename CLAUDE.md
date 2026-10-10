@@ -21,8 +21,9 @@ All backend commands run from `backend/`; all frontend commands from `frontend/`
 ```bash
 dotnet run --project src/AppTemplate.AppHost      # runs Postgres + API + frontend together via Aspire
 dotnet build AppTemplate.slnx
-dotnet test AppTemplate.slnx                      # all tests
+dotnet test AppTemplate.slnx --filter "Category!=RequiresFullStack"  # everything but the end-to-end tests
 dotnet test tests/AppTemplate.UnitTests/AppTemplate.UnitTests.csproj --filter "FullyQualifiedName~UserTests"  # single class/test
+dotnet test tests/AppTemplate.EndToEndTests       # whole AppHost + Playwright; first: pwsh tests/AppTemplate.EndToEndTests/bin/Debug/net10.0/playwright.ps1 install chromium
 dotnet csharpier check .                          # format check (CI-enforced); `format .` to fix
 ```
 
@@ -109,11 +110,12 @@ Background jobs (ADRs 012 and 013) use Hangfire with Postgres storage (schema `h
 
 The realm file is imported only while Keycloak's data volume is empty. After changing `apptemplate-realm.json`, delete that volume, or apply the change in the admin console.
 
-Four test projects under `backend/tests/`, all xUnit (see ADR 006 for the reasoning):
+Five test projects under `backend/tests/`, all xUnit (see ADR 006 for the reasoning):
 
 - **`AppTemplate.UnitTests`** - Core/UseCases in isolation, `IRepository<T>` substituted with NSubstitute. No I/O.
 - **`AppTemplate.FunctionalTests`** - full HTTP → FastEndpoints → Mediator → EF Core → Postgres pipeline via `WebApplicationFactory<Program>`. `PostgresTestDatabase` starts one real Postgres container per test run (Testcontainers), and each `AppTemplateWebApplicationFactory` gets a fresh database in it, created by the real migrations - so **Docker is required** (Podman works via `DOCKER_HOST` with `TESTCONTAINERS_RYUK_DISABLED=true`). Mark every test class that uses the factory `[Trait(TestCategories.Name, TestCategories.RequiresDocker)]`: CI's Windows/macOS jobs run `--filter "Category!=RequiresDocker"`, since they can't run Linux containers.
 - **`AppTemplate.BackendForFrontend.Tests`** - the backend for frontend, in-process. No Docker.
+- **`AppTemplate.EndToEndTests`** - starts the whole AppHost with `Aspire.Hosting.Testing` (no data volumes, so each run starts empty) and drives Chromium with Playwright through the backend for frontend: register and sign in through Keycloak, edit the profile, sign out. Marked `RequiresFullStack` and run only by `e2e.yml`. Locally it works with Podman too: `ASPIRE_CONTAINER_RUNTIME=podman`.
 - **`AppTemplate.ArchitectureTests`** - enforces ADR 001: allowed `ProjectReference`s per `src` project (a new project must be added to the allow-list), forbidden type dependencies per layer (NetArchTest), endpoints under `Web.Features`, no MVC controllers, handlers only in UseCases, and `<UseCase>Command`/`<UseCase>Query` naming. Run it with `dotnet test tests/AppTemplate.ArchitectureTests`.
 
 Every route requires an authenticated user unless it calls `AllowAnonymous()`: there is an authorization fallback policy, and `EndpointAuthorizationTests` (functional) pins the list of anonymous routes, so update it when you deliberately make an endpoint public.

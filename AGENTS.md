@@ -106,6 +106,7 @@ Dependencies point inward:
   - Authenticate with `factory.CreateAuthenticatedClient(sub, Permission.X, ...)`.
   - Use the fakes the factory exposes: `PasswordResetService`, `EmailSender`, `TestRecurringJob`.
 - **Backend for frontend tests** (`AppTemplate.BackendForFrontend.Tests`) cover session endpoints and proxy rules.
+- **End-to-end tests** (`AppTemplate.EndToEndTests`) start the whole AppHost and drive Chromium with Playwright, for the few flows that cross Keycloak, the backend for frontend and the API. Add one only for such a flow. Locate elements by role or label, never by CSS class, and never sleep: Playwright's `Expect` waits.
 - **Architecture tests** (`AppTemplate.ArchitectureTests`) enforce section 2 and the placement rules in sections 3 and 4. If one fails, fix the code, not the rule. Only change a rule together with the ADR that justifies it.
 - Tests follow Arrange-Act-Assert, one behavior per test. Change tests whenever observable behavior changes.
 
@@ -140,7 +141,8 @@ Before calling a change finished, run what applies and report the actual results
 # backend/
 dotnet csharpier check .
 dotnet build AppTemplate.slnx
-dotnet test AppTemplate.slnx        # needs Docker (or Podman via DOCKER_HOST)
+dotnet test AppTemplate.slnx --filter "Category!=RequiresFullStack"   # needs Docker (or Podman via DOCKER_HOST)
+dotnet test tests/AppTemplate.EndToEndTests   # whole stack in a browser; when you changed a flow it covers
 
 # frontend/
 npm run format:check               # npm run format to fix

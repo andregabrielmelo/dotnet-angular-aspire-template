@@ -89,7 +89,7 @@ public static class BackendForFrontendEndpoints
                     new OpenIdConnectChallengeProperties
                     {
                         RedirectUri = SafeReturnUrl(returnUrl),
-                        Prompt = "create",
+                        Prompt = AuthenticationConfigurations.RegistrationPrompt,
                     },
                     [OpenIdConnectDefaults.AuthenticationScheme]
                 )
