@@ -1,4 +1,6 @@
-﻿namespace AppTemplate.Web.Configurations;
+using AppTemplate.ServiceDefaults;
+
+namespace AppTemplate.Web.Configurations;
 
 public static class AuthenticationConfigurations
 {
@@ -20,10 +22,10 @@ public static class AuthenticationConfigurations
             .AddAuthentication()
             .AddKeycloakJwtBearer(
                 serviceName: "keycloak",
-                realm: keycloak["Realm"] ?? "apptemplate",
+                realm: builder.Configuration.GetRequiredValue("Keycloak:Realm"),
                 options =>
                 {
-                    options.Audience = keycloak["Audience"] ?? "apptemplate-api";
+                    options.Audience = builder.Configuration.GetRequiredValue("Keycloak:Audience");
                     // Keycloak runs over plain HTTP inside Aspire locally.
                     options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
                     // The Aspire service-discovery address is for local development. Elsewhere,
