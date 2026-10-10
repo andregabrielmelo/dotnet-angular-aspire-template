@@ -26,12 +26,12 @@ What happens, and in what order, when a use case changes data and something else
 - An entity raises one with `RaiseIntegrationEvent` (`User.Create` raises `UserProvisioned`). The record is the message contract: primitives only, marked `[IntegrationEvent("name", version)]`, and registered in `AddOutbox(o => o.AddEvent<T>())` (in `InfrastructureServiceExtensions`).
 - **Atomic with the change.** The event is written to `outbox_messages` in the same `SaveChanges` as the entity, so a rollback leaves neither.
 - **Delivered at least once** by the relay: right after commit (`ProcessOutboxJob`), or within a minute by `OutboxSweepJob` if that never ran.
-- **Each handler** (`INotificationHandler<TEvent>`, for example `SendWelcomeEmailWhenUserProvisioned`) runs in its own scope and transaction. Its database changes commit together with an inbox row, so a redelivery skips it once it has completed.
+- **Each handler** (`INotificationHandler<TEvent>`, for example `SendWelcomeEmailWhenUserProvisioned`) runs in its own scope and transaction. Its database changes commit together with an inbox row (`InboxStore`, on the handler's own DbContext), so a redelivery skips it once it has completed, and a rollback leaves no inbox row, so the retry runs it.
 - **A failing handler** gets the message retried with back-off (10 s, then doubling up to 1 hour). After 10 attempts the message is dead-lettered. Throw to fail; return normally when there's nothing to do (for example, the user was deleted meanwhile).
 
 ## Duplicates and idempotency
 
-- **Database changes in a handler:** effectively-once, thanks to the inbox.
+- **Database changes in a handler:** effectively-once, thanks to the inbox, and only because they share the inbox row's transaction. Delivery itself stays at-least-once.
 - **External side effects** (email, HTTP, file storage): can repeat if the process dies after the side effect and before the handler's transaction commits. Guard them, either with state the handler checks first (the welcome email checks and sets `User.WelcomeEmailSentAtUtc`), or with an idempotency key the external system honours.
 - **Leases:** a worker that outlives its 5-minute lease can overlap with another worker. That's one more reason handlers must be idempotent.
 
@@ -45,7 +45,7 @@ What happens, and in what order, when a use case changes data and something else
 ## Removing it
 
 The outbox is one registration. To drop it from a project that doesn't need it:
-1. Delete the `services.AddOutbox(...)` call in `InfrastructureServiceExtensions` and the `Infrastructure/Outbox/` folder, plus `UseCases/Outbox/` and `Web/Features/OutboxFeatures/`.
+1. Delete the `services.AddOutbox(...)` and `services.AddInbox()` calls in `InfrastructureServiceExtensions` and the `Infrastructure/Outbox/` and `Infrastructure/Inbox/` folders (with their configurations in `Data/Configurations/`), plus `UseCases/Outbox/` and `Web/Features/OutboxFeatures/`.
 2. Remove the `OutboxMessages`/`InboxMessages` sets from `ApplicationDatabaseContext`, and add a migration that drops both tables.
 3. Remove `IIntegrationEvent`, `RaiseIntegrationEvent` and the integration event records, and send the welcome email another way, for example by enqueuing a Hangfire job from the handler and accepting the lost-enqueue window ADR 016 describes.
 4. Remove the outbox metrics from `ApplicationMetrics` and `OutboxTests`.

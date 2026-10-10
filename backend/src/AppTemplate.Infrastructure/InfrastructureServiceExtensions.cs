@@ -6,6 +6,7 @@ using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Files;
 using AppTemplate.Infrastructure.Images;
+using AppTemplate.Infrastructure.Inbox;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Users.List;
@@ -84,6 +85,7 @@ public static class InfrastructureServiceExtensions
         services.AddJobScheduling(config, connectionString);
 
         // Every integration event type an entity may raise must be registered here.
+        services.AddInbox();
         services.AddOutbox(
             config,
             outbox => outbox.AddEvent<UserProvisioned>().AddEvent<StoredFileOrphaned>()

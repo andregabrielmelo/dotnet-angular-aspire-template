@@ -31,7 +31,7 @@ public sealed class IntegrationEventRegistry(IOptions<OutboxOptions> options)
     /// <summary>Null for a key nobody registered: the message is dead-lettered unread.</summary>
     public Type? TypeOf(string key) => _types.GetValueOrDefault(key);
 
-    public IIntegrationEvent Deserialize(string payload, Type type) =>
+    public static IIntegrationEvent Deserialize(string payload, Type type) =>
         (IIntegrationEvent)(
             JsonSerializer.Deserialize(payload, type, Json)
             ?? throw new JsonException("The payload is null.")

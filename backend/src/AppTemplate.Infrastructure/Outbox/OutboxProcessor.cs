@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
+using AppTemplate.Infrastructure.Inbox;
 using AppTemplate.UseCases.Telemetry;
 using Mediator;
 using Microsoft.Extensions.Options;
@@ -18,7 +19,7 @@ namespace AppTemplate.Infrastructure.Outbox;
 /// (<see cref="OutboxMessage.LockedUntilUtc"/>), so two workers never hold the same message
 /// while its lease is valid; an expired lease is claimable again.</item>
 /// <item><b>Per-handler inbox.</b> Each handler runs in its own scope and transaction, which
-/// also records the <see cref="InboxMessage"/>; a redelivery skips handlers that completed.
+/// also records the consumption in the inbox (<see cref="InboxStore"/>); a redelivery skips handlers that completed.
 /// That makes a handler's <i>database</i> changes effectively-once. External side effects
 /// (email) can still repeat if the process dies between the side effect and the commit, so
 /// such handlers keep their own guard (like <c>User.WelcomeEmailSentAtUtc</c>).</item>
@@ -27,6 +28,7 @@ namespace AppTemplate.Infrastructure.Outbox;
 public sealed partial class OutboxProcessor(
     IServiceScopeFactory scopeFactory,
     IntegrationEventRegistry registry,
+    InboxStore inbox,
     IOptions<OutboxOptions> options,
     TimeProvider timeProvider,
     ApplicationMetrics metrics,
@@ -122,7 +124,7 @@ public sealed partial class OutboxProcessor(
 
         try
         {
-            var integrationEvent = registry.Deserialize(message.Payload, type);
+            var integrationEvent = IntegrationEventRegistry.Deserialize(message.Payload, type);
             await DispatchToEachHandlerAsync(message.Id, integrationEvent, type, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -168,12 +170,7 @@ public sealed partial class OutboxProcessor(
             await using var transaction = await context.Database.BeginTransactionAsync(
                 cancellationToken
             );
-            if (
-                await context.InboxMessages.AnyAsync(
-                    inbox => inbox.MessageId == messageId && inbox.Consumer == consumer,
-                    cancellationToken
-                )
-            )
+            if (await inbox.HasProcessedAsync(context, messageId, consumer, cancellationToken))
             {
                 continue; // already handled by an earlier delivery
             }
@@ -183,14 +180,7 @@ public sealed partial class OutboxProcessor(
                 .First(candidate => candidate!.GetType() == handlerType)!;
             await InvokeAsync(handler, handlerInterface, integrationEvent, cancellationToken);
 
-            context.InboxMessages.Add(
-                new InboxMessage
-                {
-                    MessageId = messageId,
-                    Consumer = consumer,
-                    ProcessedAtUtc = timeProvider.GetUtcNow(),
-                }
-            );
+            inbox.MarkProcessed(context, messageId, consumer);
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
