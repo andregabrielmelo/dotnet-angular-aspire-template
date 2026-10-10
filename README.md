@@ -35,6 +35,16 @@ See [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-t
 - [Getting Started](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/getting-started/)
 - [Goals & Design Decisions](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/design-decisions/)
 - [Architecture Decisions (ADRs)](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/architecture-decisions/)
+- [Further reading](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/further-reading/)
+
+## Inspiration
+
+This template builds on two well-known Clean Architecture templates, and borrows their structure where it fits:
+
+- [ardalis/CleanArchitecture](https://github.com/ardalis/CleanArchitecture) - the Core / UseCases / Infrastructure / Web layout, ports in Core, query services and the REPR endpoints.
+- [jasontaylordev/CleanArchitecture](https://github.com/jasontaylordev/CleanArchitecture) - application pipeline behaviors (logging, auditing) and domain enums.
+
+When a structural question comes up, [Further reading](https://andregabrielmelo.github.io/dotnet-angular-aspire-template/further-reading/) lists the blogs and articles the design leans on.
 
 ## License
 
