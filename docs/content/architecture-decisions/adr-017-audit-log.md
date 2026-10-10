@@ -21,9 +21,8 @@ Operators need to answer "who changed this, when, and what was it before?" and "
   - `system:{job id}` inside a recurring job (`RecurringJobRunner` sets it), `system:outbox` in outbox handlers
   - `anonymous` otherwise
 - **Trace id:** stored with each entry, linking it to the request's logs and trace.
-- **Explicit events:** `IAuditLog.RecordAsync(action, target, outcome)` records actions that aren't entity changes:
-  - every job management mutation (trigger, pause, resume, remove, restore) with its outcome
-  - outbox dead-letter requeues
+- **Explicit events:** `IAuditLog.RecordAsync(action, target, outcome)` records actions that aren't entity changes. Each is saved on its own DbContext, so a failed command's tracked changes are never committed by its audit record.
+  - every job management mutation (trigger, pause, resume, remove, restore) and outbox dead-letter requeue: the command implements `IAuditedCommand`, and `AuditingBehavior` (Mediator pipeline) records a returned `Result` as succeeded or failed, and an exception as failed before rethrowing it. Audit is mandatory: a failed write fails an otherwise successful command; after a throw, the command's exception wins and the audit failure is logged
   - a signed-in caller refused an `/v1/admin` endpoint (403), recorded by `AuditingAuthorizationResultHandler` with the route pattern, never the raw path
 - **Querying:** `GET /v1/admin/audit`, permission `audit:read` (added to `Permission` and the realm's `admin` role).
   - Filters only on indexed columns (entity type and key, actor), always within a time range: the last 7 days unless `from`/`to` are given.
