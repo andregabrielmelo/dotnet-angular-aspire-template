@@ -18,9 +18,9 @@ Dependencies point inward:
 
 | Project | Contains | May depend on |
 |---|---|---|
-| `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>`, `LoggingBehavior` | nothing in the solution |
+| `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>` | nothing in the solution |
 | `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IFileStorage`, `IEmailSender`, `ICacheInvalidator`, `IAuditLog`, ...) with their models (`Core/Jobs`); shared enums in `Core/Enums` | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`) and request context (`ICurrentUser`) | Core, SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; pipeline behaviors (`UseCases/Behaviors`); list query-service interfaces (`IListUsersQueryService`) and request context (`ICurrentUser`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, Hangfire, the Keycloak Admin API | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, composition root | everything above |
 | `AppTemplate.BackendForFrontend` | OpenID Connect session, YARP proxy to Web | ServiceDefaults only |
@@ -83,7 +83,7 @@ Dependencies point inward:
 ## 6a. Auditing ([ADR 017](docs/content/architecture-decisions/adr-017-audit-log.md))
 
 - An entity whose changes matter for accountability implements `IAuditable`, and lists exactly the properties to record in `AddAuditing` (`InfrastructureServiceExtensions`). Never allowlist a secret or token. Personal data is masked automatically when its property or type is `[PersonalData]`.
-- Security-relevant actions that aren't entity changes (admin mutations, refusals) call `IAuditLog.RecordAsync` with an `AuditActions` name and a bounded `AuditTarget`.
+- Security-relevant commands that aren't entity changes (admin mutations) implement `IAuditedCommand` (an `AuditActions` name and a bounded `AuditTarget`, implemented explicitly so they stay out of the request log); `AuditingBehavior` records them, so handlers never call `IAuditLog` themselves. Refusals that never reach Mediator (403s) are recorded in Web.
 - Audited changes must go through tracked `SaveChanges`: `ExecuteUpdate`/`ExecuteDelete` bypass the audit log.
 
 ## 6b. File storage ([ADR 018](docs/content/architecture-decisions/adr-018-file-storage.md))
