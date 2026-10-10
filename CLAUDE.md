@@ -10,7 +10,7 @@ A GitHub **template repository** for starting new full-stack projects: a Clean A
 
 Every project, namespace, folder, the Postgres database name, and the Keycloak realm/client names are currently named `AppTemplate` / `apptemplate`. When someone actually uses this template for a new project, they run `scripts/rename-template.sh YourProjectName` (a plain find-and-replace, not a `dotnet new` template engine) as their first step - keep that in mind if a task looks like it wants a "real" project name; the placeholder is intentional.
 
-Full documentation (architecture, design decisions, ADRs) lives in `docs/` (a Hugo site) and is authoritative for *why* things are built this way - read it before making architectural changes: `docs/content/design-decisions.md` and `docs/content/architecture-decisions/adr-*.md`.
+Full documentation (architecture, design decisions, ADRs) lives in `docs/` (a Hugo site) and is authoritative for *why* things are built this way - read it before making architectural changes: `docs/content/design-decisions.md` and `docs/content/architecture-decisions/adr-*.md`. The template builds on ardalis/CleanArchitecture and jasontaylordev/CleanArchitecture; when the ADRs don't settle a structural question, `docs/content/further-reading.md` lists the sources to check.
 
 ## Commands
 

@@ -7,6 +7,7 @@ Commands, project layout and the full architecture overview are in [`CLAUDE.md`]
 ## 1. Before changing anything
 
 - Read the ADR that covers the area you are touching before introducing a library, a pattern or a new abstraction. If your change contradicts one, stop and say so. Don't silently invent a competing pattern.
+- When the ADRs don't settle a structural question, check the sources in [Further reading](docs/content/further-reading.md) (the two templates this project builds on and the blogs it leans on) before inventing an answer, and say which one you followed.
 - Search before assuming something is missing. The template already has authentication, permissions, caching, background jobs, email and Postgres-backed tests.
 - Copy the shape of the `User` feature: `Core/Aggregates/UserAggregate`, then `UseCases/Users/<UseCase>/`, then `Web/Features/UserFeatures/`. It is the executable reference for every layer.
 - Look at the related tests, DI registrations (`Web/Configurations/`, `Infrastructure/InfrastructureServiceExtensions.cs`) and configuration before creating something new.
