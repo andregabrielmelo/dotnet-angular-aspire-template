@@ -13,6 +13,9 @@ public static class AuthenticationConfigurations
     /// <summary>AuthenticationProperties item carrying the brokered provider's alias.</summary>
     public const string IdentityProviderHintItem = "kc_idp_hint";
 
+    /// <summary>OpenID Connect "Initiating User Registration": open the registration form.</summary>
+    public const string RegistrationPrompt = "create";
+
     /// <summary>
     /// OpenID Connect (authorization code + PKCE) against Keycloak for login, and an HTTP-only
     /// cookie for the browser session. The tokens Keycloak issues are kept inside that encrypted
@@ -104,6 +107,21 @@ public static class AuthenticationConfigurations
                         }
 
                         await redirectToIdentityProvider(context);
+                    };
+
+                    // Keycloak advertises pushed authorization requests (PAR), so the handler
+                    // sends every parameter in a back-channel POST. Keycloak ignores
+                    // prompt=create there and shows its sign-in form, so "Create account"
+                    // would open the wrong page. That one challenge goes in the query string.
+                    var pushAuthorization = options.Events.OnPushAuthorization;
+                    options.Events.OnPushAuthorization = async context =>
+                    {
+                        if (context.ProtocolMessage.Prompt == RegistrationPrompt)
+                        {
+                            context.SkipPush();
+                        }
+
+                        await pushAuthorization(context);
                     };
                 }
             );
