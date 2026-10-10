@@ -1,5 +1,4 @@
-﻿using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Jobs;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Jobs.List;
 using AppTemplate.Web.Configurations;
 using AppTemplate.Web.Extensions;

@@ -1,7 +1,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Files;
 using AppTemplate.UseCases.Telemetry;
 
 namespace AppTemplate.UseCases.Users.Avatar.Set;

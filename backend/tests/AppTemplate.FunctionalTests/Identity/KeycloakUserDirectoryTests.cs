@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using AppTemplate.Infrastructure.Identity;
-using AppTemplate.UseCases.Users.SyncProfiles;
 using Microsoft.AspNetCore.WebUtilities;
 using Xunit;
 

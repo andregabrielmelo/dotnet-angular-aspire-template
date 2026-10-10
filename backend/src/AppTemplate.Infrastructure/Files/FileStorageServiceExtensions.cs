@@ -1,6 +1,5 @@
 using Amazon.Runtime;
 using Amazon.S3;
-using AppTemplate.UseCases.Files;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 

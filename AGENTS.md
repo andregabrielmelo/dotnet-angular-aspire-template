@@ -19,14 +19,15 @@ Dependencies point inward:
 | Project | Contains | May depend on |
 |---|---|---|
 | `AppTemplate.SharedKernel` | Stable base types: `EntityBase`, domain event interfaces and dispatch, `IRepository<T>`, `LoggingBehavior` | nothing in the solution |
-| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications, interfaces Infrastructure implements | SharedKernel |
-| `AppTemplate.UseCases` | Mediator commands, queries and handlers; application abstractions (`ICurrentUser`, `ICacheInvalidator`, `IOutboxAdministration`, query services) | Core, SharedKernel |
+| `AppTemplate.Core` | Aggregates, Vogen value objects, domain events, specifications; ports to external resources in `Core/Interfaces` (`IFileStorage`, `IEmailSender`, `ICacheInvalidator`, `IAuditLog`, ...) with their models (`Core/Jobs`); shared enums in `Core/Enums` | SharedKernel |
+| `AppTemplate.UseCases` | Mediator commands, queries and handlers; list query-service interfaces (`IListUsersQueryService`) and request context (`ICurrentUser`) | Core, SharedKernel |
 | `AppTemplate.Infrastructure` | EF Core and Npgsql, repository and query-service implementations, MailKit, Hangfire, the Keycloak Admin API | Core, UseCases, SharedKernel |
 | `AppTemplate.Web` | FastEndpoints endpoints, request validation, HTTP mapping, middleware, composition root | everything above |
 | `AppTemplate.BackendForFrontend` | OpenID Connect session, YARP proxy to Web | ServiceDefaults only |
 
 - Core never references UseCases, Infrastructure, Web, EF Core or ASP.NET Core.
 - UseCases never references Infrastructure, Web, EF Core or Hangfire. Data access goes through `IRepository<T>` or a query-service interface defined in UseCases.
+- A dependency on an external resource (S3, image decoding, Keycloak, SMTP, Redis/HybridCache, Hangfire, or our own Postgres beyond `IRepository<T>`) is an Infrastructure class behind an interface in `Core/Interfaces`; the doc comment names the implementation and its consumers. List query services, which return use-case DTOs, and `ICurrentUser`, which Web implements from the request, stay in UseCases.
 - Don't move a class to another layer to avoid writing the right abstraction.
 - Don't add projects, base classes, generic frameworks or DDD patterns without a concrete use and a clear benefit.
 - Before adding an interface, specification, domain event or pipeline behavior, check [When To Abstract](docs/content/design-decisions.md#when-to-abstract). Optional capabilities stay opt-in ([Supported vs Required](docs/content/design-decisions.md#supported-vs-required)).

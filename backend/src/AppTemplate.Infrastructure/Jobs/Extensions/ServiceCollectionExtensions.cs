@@ -1,7 +1,6 @@
 using AppTemplate.Infrastructure.Jobs.Options;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.Infrastructure.Jobs.Services;
-using AppTemplate.UseCases.Jobs;
 using Hangfire;
 using Hangfire.Logging;
 using Hangfire.PostgreSql;

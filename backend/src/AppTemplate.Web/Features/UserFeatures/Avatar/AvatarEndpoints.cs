@@ -1,5 +1,4 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.UseCases.Files;
 using AppTemplate.UseCases.Users.Avatar.Delete;
 using AppTemplate.UseCases.Users.Avatar.Get;
 using AppTemplate.UseCases.Users.Avatar.Set;

@@ -1,5 +1,3 @@
-using AppTemplate.UseCases.Files;
-
 namespace AppTemplate.Infrastructure.Images;
 
 public static class ImageProcessingServiceExtensions

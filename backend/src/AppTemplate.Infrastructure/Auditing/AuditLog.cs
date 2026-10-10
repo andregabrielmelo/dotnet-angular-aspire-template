@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using AppTemplate.Infrastructure.Data;
-using AppTemplate.UseCases.Auditing;
 
 namespace AppTemplate.Infrastructure.Auditing;
 

@@ -1,4 +1,4 @@
-﻿namespace AppTemplate.UseCases.Jobs;
+namespace AppTemplate.Core.Jobs;
 
 /// <param name="Id">The stable recurring job id (e.g. "sync-user-profiles").</param>
 /// <param name="Cron">The job's schedule, unchanged while paused.</param>

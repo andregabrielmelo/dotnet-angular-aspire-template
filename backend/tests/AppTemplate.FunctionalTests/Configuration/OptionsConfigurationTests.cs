@@ -4,7 +4,6 @@ using AppTemplate.Infrastructure.Files;
 using AppTemplate.Infrastructure.Identity;
 using AppTemplate.Infrastructure.Jobs.Options;
 using AppTemplate.Infrastructure.Outbox;
-using AppTemplate.UseCases.Files;
 using AppTemplate.UseCases.Users.SendWelcomeEmail;
 using AppTemplate.Web.Authorization;
 using AppTemplate.Web.Configurations;

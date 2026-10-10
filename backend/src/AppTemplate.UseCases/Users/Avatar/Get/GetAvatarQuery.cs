@@ -1,5 +1,4 @@
 using AppTemplate.Core.Aggregates.UserAggregate;
-using AppTemplate.UseCases.Files;
 
 namespace AppTemplate.UseCases.Users.Avatar.Get;
 

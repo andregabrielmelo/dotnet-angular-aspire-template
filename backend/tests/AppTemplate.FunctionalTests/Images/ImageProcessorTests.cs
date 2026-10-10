@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
 using AppTemplate.Infrastructure.Images;
-using AppTemplate.UseCases.Files;
 using Ardalis.Result;
 using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;

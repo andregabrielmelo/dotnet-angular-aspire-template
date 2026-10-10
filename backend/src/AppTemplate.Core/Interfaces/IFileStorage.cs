@@ -1,4 +1,4 @@
-namespace AppTemplate.UseCases.Files;
+namespace AppTemplate.Core.Interfaces;
 
 /// <summary>
 /// Object storage (S3-compatible: Garage locally, implemented in Infrastructure). Keys are
@@ -6,6 +6,7 @@ namespace AppTemplate.UseCases.Files;
 /// <see cref="FileStorageUnavailableException"/>, which use cases turn into
 /// <c>Result.Unavailable</c> (503): file storage is an optional dependency, and everything
 /// else keeps working without it.
+/// Implemented by <c>S3FileStorage</c>. Used by the avatar handlers and the orphaned-file handler.
 /// </summary>
 public interface IFileStorage
 {

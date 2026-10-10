@@ -1,10 +1,11 @@
-namespace AppTemplate.UseCases.Files;
+namespace AppTemplate.Core.Interfaces;
 
 /// <summary>
 /// Turns an untrusted upload into a safe image (implemented in Infrastructure): it checks the
 /// file signature, reads the dimensions <b>before</b> decoding, rejects anything over the
 /// limits, then decodes and re-encodes it, which drops all metadata (EXIF, GPS) and any
 /// payload hidden in the original bytes.
+/// Implemented by <c>SkiaImageProcessor</c>. Used by <c>SetAvatarHandler</c>.
 /// </summary>
 public interface IImageProcessor
 {

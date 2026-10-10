@@ -2,7 +2,6 @@ using System.Net;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using AppTemplate.UseCases.Files;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Infrastructure.Files;

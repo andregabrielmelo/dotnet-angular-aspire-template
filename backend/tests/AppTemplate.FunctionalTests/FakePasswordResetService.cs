@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using AppTemplate.Core.ValueObjects;
-using AppTemplate.UseCases.Users.ForgotPassword;
 using Ardalis.Result;
 
 namespace AppTemplate.FunctionalTests;

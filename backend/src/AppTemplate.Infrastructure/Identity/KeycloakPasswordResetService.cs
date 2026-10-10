@@ -1,5 +1,4 @@
-﻿using System.Net.Http.Json;
-using AppTemplate.UseCases.Users.ForgotPassword;
+using System.Net.Http.Json;
 using Ardalis.Result;
 using Microsoft.Extensions.Options;
 

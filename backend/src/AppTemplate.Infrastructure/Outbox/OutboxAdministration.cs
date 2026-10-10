@@ -1,5 +1,4 @@
 using AppTemplate.Infrastructure.Data;
-using AppTemplate.UseCases.Outbox;
 
 namespace AppTemplate.Infrastructure.Outbox;
 

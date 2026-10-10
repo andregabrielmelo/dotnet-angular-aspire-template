@@ -1,11 +1,10 @@
-﻿using AppTemplate.Core.ValueObjects;
-
-namespace AppTemplate.UseCases.Users.ForgotPassword;
+namespace AppTemplate.Core.Interfaces;
 
 /// <summary>
 /// Starts the identity provider's own password-reset flow. Credentials never pass through this
 /// application - the provider (Keycloak) emails the user a link to its hosted "set a new
 /// password" page. Implemented in Infrastructure.
+/// Implemented by <c>KeycloakPasswordResetService</c>. Used by <c>ForgotPasswordHandler</c>.
 /// </summary>
 public interface IPasswordResetService
 {

@@ -1,13 +1,12 @@
-﻿using AppTemplate.Infrastructure.Jobs;
+using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
-using AppTemplate.UseCases.Jobs;
 using Ardalis.Result;
 using Hangfire;
 using Hangfire.AspNetCore;
 using Hangfire.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using RecurringJobDto = AppTemplate.UseCases.Jobs.RecurringJobDto;
+using RecurringJobDto = AppTemplate.Core.Jobs.RecurringJobDto;
 
 namespace AppTemplate.FunctionalTests.Jobs;
 

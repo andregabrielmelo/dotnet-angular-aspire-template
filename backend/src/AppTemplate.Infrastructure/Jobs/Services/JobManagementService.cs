@@ -1,8 +1,7 @@
-﻿using AppTemplate.UseCases.Jobs;
 using Ardalis.Result;
 using Hangfire;
 using Hangfire.Storage;
-using RecurringJobDto = AppTemplate.UseCases.Jobs.RecurringJobDto;
+using RecurringJobDto = AppTemplate.Core.Jobs.RecurringJobDto;
 using StoredRecurringJob = Hangfire.Storage.RecurringJobDto;
 
 namespace AppTemplate.Infrastructure.Jobs.Services;
