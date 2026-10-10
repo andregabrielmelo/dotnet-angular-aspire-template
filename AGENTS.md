@@ -95,7 +95,7 @@ Dependencies point inward:
 
 - Use cases cache through `HybridCache` directly (`GetUserHandler`). Cached values are primitives-only records (`CachedUser`) so they serialize to Redis.
 - Lookups that can miss use `GetOrCreateExistingAsync`, which never caches "not found".
-- Every cached entry carries a tag (`CacheTags`). Every write that affects it calls `ICacheInvalidator.InvalidateAsync(tag)` **after** the write succeeds. Invalidation is best-effort, so it never fails a write.
+- Every cached entry carries a tag (`CacheTags`). Every write that affects it calls `ICacheInvalidator.InvalidateAsync(tag)` **after** the write has committed, never inside an open transaction: invalidating earlier lets a concurrent read re-cache the old row. Invalidation is best-effort, so it never fails a write.
 - Output caching (`AuthorizedSharedResponsePolicy`) is only for responses that are identical for every authorized caller. Never use it for anything that depends on the caller.
 - A new cached read needs a key, a tag, an invalidation call in each affected write, and a functional test like `CachingTests`.
 
