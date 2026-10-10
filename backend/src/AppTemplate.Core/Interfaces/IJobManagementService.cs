@@ -1,4 +1,6 @@
-﻿namespace AppTemplate.UseCases.Jobs;
+using AppTemplate.Core.Jobs;
+
+namespace AppTemplate.Core.Interfaces;
 
 /// <summary>
 /// Inspects and manages recurring background jobs - the production alternative to the
@@ -10,6 +12,7 @@
 /// <c>Jobs/Get</c> and <c>Jobs/List</c>, and one command per action (<c>Jobs/Trigger</c>,
 /// <c>Pause</c>, <c>Resume</c>, <c>Remove</c>, <c>Restore</c>).
 /// </para>
+/// Implemented by <c>JobManagementService</c>.
 /// </summary>
 public interface IJobManagementService
 {

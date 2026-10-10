@@ -1,6 +1,5 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using AppTemplate.UseCases.Users.SyncProfiles;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Infrastructure.Identity;

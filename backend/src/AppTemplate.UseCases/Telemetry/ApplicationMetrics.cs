@@ -138,9 +138,3 @@ public sealed class ApplicationMetrics
         _jobDuration.Record(duration.TotalSeconds, tags);
     }
 }
-
-public enum JobOutcome
-{
-    Succeeded,
-    Failed,
-}

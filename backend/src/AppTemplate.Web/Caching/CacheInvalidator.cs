@@ -1,4 +1,3 @@
-﻿using AppTemplate.UseCases.Caching;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Hybrid;
 

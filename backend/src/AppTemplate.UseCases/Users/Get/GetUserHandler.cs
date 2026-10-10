@@ -1,4 +1,4 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.UseCases.Caching;
 using Microsoft.Extensions.Caching.Hybrid;

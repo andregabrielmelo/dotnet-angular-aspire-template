@@ -1,5 +1,3 @@
-using AppTemplate.UseCases.Auditing;
-using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Jobs.Pause;
 using AppTemplate.UseCases.Jobs.Remove;
 using AppTemplate.UseCases.Jobs.Restore;

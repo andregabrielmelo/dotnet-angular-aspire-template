@@ -1,5 +1,3 @@
-﻿using AppTemplate.UseCases.Jobs;
-
 namespace AppTemplate.Web.Features.JobFeatures;
 
 public sealed record RecurringJobResponse(

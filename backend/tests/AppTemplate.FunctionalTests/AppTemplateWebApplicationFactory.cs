@@ -4,7 +4,6 @@ using AppTemplate.FunctionalTests.Jobs;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.UseCases.Telemetry;
-using AppTemplate.UseCases.Users.ForgotPassword;
 using Hangfire;
 using Hangfire.InMemory;
 using Hangfire.Logging;

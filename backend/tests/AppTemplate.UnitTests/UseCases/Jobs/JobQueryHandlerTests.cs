@@ -1,4 +1,3 @@
-using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Jobs.Get;
 using AppTemplate.UseCases.Jobs.List;
 using Ardalis.Result;

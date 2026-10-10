@@ -1,5 +1,3 @@
-﻿using AppTemplate.UseCases.Users.ForgotPassword;
-using AppTemplate.UseCases.Users.SyncProfiles;
 using Duende.AccessTokenManagement;
 using Microsoft.Extensions.Options;
 

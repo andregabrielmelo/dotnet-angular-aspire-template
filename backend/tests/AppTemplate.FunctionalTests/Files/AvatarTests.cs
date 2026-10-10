@@ -8,7 +8,6 @@ using AppTemplate.FunctionalTests.Images;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Authorization;
-using AppTemplate.UseCases.Files;
 using AppTemplate.Web.Features.UserFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

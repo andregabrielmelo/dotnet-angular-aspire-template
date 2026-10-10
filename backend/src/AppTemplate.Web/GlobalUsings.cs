@@ -1,4 +1,7 @@
-﻿global using AppTemplate.SharedKernel;
+global using AppTemplate.Core.Enums;
+global using AppTemplate.Core.Interfaces;
+global using AppTemplate.Core.Jobs;
+global using AppTemplate.SharedKernel;
 global using AppTemplate.UseCases;
 global using Ardalis.Result;
 global using FastEndpoints;

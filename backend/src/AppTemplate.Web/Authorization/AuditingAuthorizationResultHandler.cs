@@ -1,4 +1,3 @@
-using AppTemplate.UseCases.Auditing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 
