@@ -88,6 +88,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/outbox/dead-letters/requeue': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Requeue dead-lettered outbox messages
+     * @description Makes every dead-lettered outbox message due again with a fresh attempt count, and returns how many.
+     */
+    post: operations['AppTemplateWebFeaturesOutboxFeaturesRequeueDeadLetteredMessagesEndpoint'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/jobs/{jobId}': {
     parameters: {
       query?: never;
@@ -310,6 +330,10 @@ export interface components {
       phoneCountryCode?: string | null;
       /** @example null */
       phoneExtension?: string | null;
+    };
+    RequeueDeadLetteredMessagesResponse: {
+      /** Format: int32 */
+      requeued: number;
     };
     RecurringJobDetailResponse: {
       job: components['schemas']['RecurringJobResponse'];
@@ -675,6 +699,40 @@ export interface operations {
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
+      };
+    };
+  };
+  AppTemplateWebFeaturesOutboxFeaturesRequeueDeadLetteredMessagesEndpoint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Messages requeued */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RequeueDeadLetteredMessagesResponse'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requires the jobs:manage permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

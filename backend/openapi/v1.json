@@ -381,6 +381,39 @@
         ]
       }
     },
+    "/v1/admin/outbox/dead-letters/requeue": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Requeue dead-lettered outbox messages",
+        "description": "Makes every dead-lettered outbox message due again with a fresh attempt count, and returns how many.",
+        "operationId": "AppTemplateWebFeaturesOutboxFeaturesRequeueDeadLetteredMessagesEndpoint",
+        "responses": {
+          "200": {
+            "description": "Messages requeued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequeueDeadLetteredMessagesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Requires the jobs:manage permission"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/admin/jobs/{jobId}": {
       "get": {
         "tags": [
@@ -923,6 +956,19 @@
             "type": "string",
             "nullable": true,
             "example": null
+          }
+        }
+      },
+      "RequeueDeadLetteredMessagesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requeued"
+        ],
+        "properties": {
+          "requeued": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
