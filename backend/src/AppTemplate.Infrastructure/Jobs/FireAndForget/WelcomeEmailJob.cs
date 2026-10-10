@@ -1,4 +1,6 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+﻿using System.Diagnostics;
+using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.UseCases.Telemetry;
 using AppTemplate.UseCases.Users.SendWelcomeEmail;
 using Ardalis.Result;
 using Hangfire;
@@ -12,10 +14,17 @@ namespace AppTemplate.Infrastructure.Jobs.FireAndForget;
 /// the use case; this class only takes a primitive argument, dispatches, and turns failures into
 /// exceptions so Hangfire retries them.
 /// </summary>
-public sealed partial class WelcomeEmailJob(IMediator mediator, ILogger<WelcomeEmailJob> logger)
+public sealed partial class WelcomeEmailJob(
+    IMediator mediator,
+    ApplicationMetrics metrics,
+    ILogger<WelcomeEmailJob> logger
+)
 {
     /// <summary>Retries after the first failure (Hangfire's default is 10).</summary>
     public const int RetryAttempts = 5;
+
+    /// <summary>This job's name in the <c>jobs.runs</c> metric.</summary>
+    public const string MetricName = "welcome-email";
 
     /// <summary>
     /// Explicit back-off for SMTP outages: 30 s, 2 min, 10 min, 30 min, 1 h. Failed deliveries
@@ -29,24 +38,38 @@ public sealed partial class WelcomeEmailJob(IMediator mediator, ILogger<WelcomeE
     [JobDisplayName("Send welcome email to user {0}")]
     public async Task ExecuteAsync(int userId, CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(
-            new SendWelcomeEmailCommand(UserId.From(userId)),
-            cancellationToken
-        );
+        var stopwatch = Stopwatch.StartNew();
+        Result result;
+        try
+        {
+            result = await mediator.Send(
+                new SendWelcomeEmailCommand(UserId.From(userId)),
+                cancellationToken
+            );
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            metrics.JobRun(MetricName, JobOutcome.Failed, stopwatch.Elapsed);
+            throw;
+        }
 
         if (result.Status == ResultStatus.NotFound)
         {
             // Deleted before the job ran - retrying won't bring the user back.
             LogUserGone(logger, userId);
+            metrics.JobRun(MetricName, JobOutcome.Skipped, stopwatch.Elapsed);
             return;
         }
 
         if (!result.IsSuccess)
         {
+            metrics.JobRun(MetricName, JobOutcome.Failed, stopwatch.Elapsed);
             throw new InvalidOperationException(
                 $"Sending the welcome email to user {userId} failed: {string.Join("; ", result.Errors)}"
             );
         }
+
+        metrics.JobRun(MetricName, JobOutcome.Succeeded, stopwatch.Elapsed);
     }
 
     [LoggerMessage(

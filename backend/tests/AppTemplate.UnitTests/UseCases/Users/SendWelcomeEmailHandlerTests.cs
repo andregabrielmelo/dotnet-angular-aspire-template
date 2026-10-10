@@ -15,6 +15,7 @@ public class SendWelcomeEmailHandlerTests
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly IEmailSender _emailSender = Substitute.For<IEmailSender>();
     private readonly TimeProvider _timeProvider = Substitute.For<TimeProvider>();
+    private readonly TestMetrics _metrics = new();
     private readonly User _user = User.Create(
         "sub-1",
         UserName.From("Ada Lovelace"),
@@ -34,7 +35,8 @@ public class SendWelcomeEmailHandlerTests
             _repository,
             _emailSender,
             Options.Create(new WelcomeEmailOptions { From = "hello@example.com" }),
-            _timeProvider
+            _timeProvider,
+            _metrics.Application
         )
             .Handle(Command, CancellationToken.None)
             .AsTask();
@@ -42,9 +44,12 @@ public class SendWelcomeEmailHandlerTests
     [Fact]
     public async Task Handle_FirstTime_SendsAndRecordsTheEmail()
     {
+        using var sent = _metrics.Collect<long>("welcome_emails.sent");
+
         var result = await Handle();
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(1, Assert.Single(sent.GetMeasurementSnapshot()).Value);
         await _emailSender
             .Received(1)
             .SendEmailAsync(
@@ -62,10 +67,12 @@ public class SendWelcomeEmailHandlerTests
     public async Task Handle_AlreadySent_DoesNothing()
     {
         _user.MarkWelcomeEmailSent(Now.AddDays(-1));
+        using var sent = _metrics.Collect<long>("welcome_emails.sent");
 
         var result = await Handle();
 
         Assert.True(result.IsSuccess);
+        Assert.Empty(sent.GetMeasurementSnapshot());
         await _emailSender
             .DidNotReceiveWithAnyArgs()
             .SendEmailAsync(default!, default!, default!, default!, default);
@@ -86,9 +93,11 @@ public class SendWelcomeEmailHandlerTests
                 Arg.Any<CancellationToken>()
             )
             .ThrowsAsync(new InvalidOperationException("SMTP down"));
+        using var sent = _metrics.Collect<long>("welcome_emails.sent");
 
         await Assert.ThrowsAsync<InvalidOperationException>(Handle);
 
+        Assert.Empty(sent.GetMeasurementSnapshot()); // counted only once the server accepted it
         Assert.Null(_user.WelcomeEmailSentAtUtc);
         await _repository
             .DidNotReceive()
