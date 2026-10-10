@@ -299,7 +299,7 @@ export interface paths {
     };
     /**
      * List audit entries
-     * @description Entity changes and security events, newest first. Filter by entity, actor and time range (default: the last 7 days).
+     * @description Entity changes and security events, newest first. Filter by entity, actor and time range (default: the last 7 days). Pages are linked in the Link header, keeping the filters.
      */
     get: operations['AppTemplateWebFeaturesAuditFeaturesListAuditEntriesEndpoint'];
     put?: never;
@@ -428,8 +428,10 @@ export interface components {
       /** @example sample.user@example.com */
       email: string;
     };
-    PagedResultOfAuditEntryDto: {
-      items: components['schemas']['AuditEntryDto'][];
+    AuditEntryListResponse: components['schemas']['PagedResultOfAuditRecord'] &
+      Record<string, never>;
+    PagedResultOfAuditRecord: {
+      items: components['schemas']['AuditRecord'][];
       /** Format: int32 */
       page: number;
       /** Format: int32 */
@@ -439,7 +441,7 @@ export interface components {
       /** Format: int32 */
       totalPages: number;
     };
-    AuditEntryDto: {
+    AuditRecord: {
       /** Format: guid */
       id: string;
       /** Format: date-time */
@@ -1310,12 +1312,22 @@ export interface operations {
   AppTemplateWebFeaturesAuditFeaturesListAuditEntriesEndpoint: {
     parameters: {
       query: {
+        /** @example User */
         entityType?: string | null;
+        /** @example null */
         entityKey?: string | null;
+        /** @example null */
         actor?: string | null;
+        /** @example null */
         from?: string | null;
+        /** @example null */
         to?: string | null;
+        /**
+         * @description 1-based page index (default 1)
+         * @example 1
+         */
         page: number;
+        /** @example 50 */
         per_page: number;
       };
       header?: never;
@@ -1330,7 +1342,37 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PagedResultOfAuditEntryDto'];
+          /**
+           * @example {
+           *       "items": [
+           *         {
+           *           "id": "0193a5c8-7b1e-7c3d-9f00-1a2b3c4d5e6f",
+           *           "occurredAtUtc": "2026-10-10T12:00:00+00:00",
+           *           "actor": "user:6f1c9e0a-2b7d-4e3f-8a91-5c0d2e4b7a13",
+           *           "action": "updated",
+           *           "entityType": "User",
+           *           "entityKey": "1",
+           *           "outcome": "succeeded",
+           *           "changes": {
+           *             "name": {
+           *               "old": "Old Name",
+           *               "new": "New Name"
+           *             },
+           *             "email": {
+           *               "old": "[redacted]",
+           *               "new": "[redacted]"
+           *             }
+           *           },
+           *           "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+           *         }
+           *       ],
+           *       "page": 1,
+           *       "perPage": 50,
+           *       "totalCount": 1,
+           *       "totalPages": 1
+           *     }
+           */
+          'application/json': components['schemas']['AuditEntryListResponse'];
         };
       };
       /** @description Invalid filter or page */
@@ -1339,7 +1381,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/problem+json': components['schemas']['HttpValidationProblemDetails'];
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
       /** @description Unauthorized */

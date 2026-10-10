@@ -968,7 +968,7 @@
           "Admin"
         ],
         "summary": "List audit entries",
-        "description": "Entity changes and security events, newest first. Filter by entity, actor and time range (default: the last 7 days).",
+        "description": "Entity changes and security events, newest first. Filter by entity, actor and time range (default: the last 7 days). Pages are linked in the Link header, keeping the filters.",
         "operationId": "AppTemplateWebFeaturesAuditFeaturesListAuditEntriesEndpoint",
         "parameters": [
           {
@@ -977,7 +977,8 @@
             "schema": {
               "type": "string",
               "nullable": true
-            }
+            },
+            "example": "User"
           },
           {
             "name": "entityKey",
@@ -985,7 +986,8 @@
             "schema": {
               "type": "string",
               "nullable": true
-            }
+            },
+            "example": null
           },
           {
             "name": "actor",
@@ -993,7 +995,8 @@
             "schema": {
               "type": "string",
               "nullable": true
-            }
+            },
+            "example": null
           },
           {
             "name": "from",
@@ -1002,7 +1005,8 @@
               "type": "string",
               "format": "date-time",
               "nullable": true
-            }
+            },
+            "example": null
           },
           {
             "name": "to",
@@ -1011,16 +1015,19 @@
               "type": "string",
               "format": "date-time",
               "nullable": true
-            }
+            },
+            "example": null
           },
           {
             "name": "page",
             "in": "query",
             "required": true,
+            "description": "1-based page index (default 1)",
             "schema": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "example": 1
           },
           {
             "name": "per_page",
@@ -1029,7 +1036,8 @@
             "schema": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "example": 50
           }
         ],
         "responses": {
@@ -1038,7 +1046,45 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfAuditEntryDto"
+                  "$ref": "#/components/schemas/AuditEntryListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "0193a5c8-7b1e-7c3d-9f00-1a2b3c4d5e6f",
+                      "occurredAtUtc": "2026-10-10T12:00:00+00:00",
+                      "actor": "user:6f1c9e0a-2b7d-4e3f-8a91-5c0d2e4b7a13",
+                      "action": "updated",
+                      "entityType": "User",
+                      "entityKey": "1",
+                      "outcome": "succeeded",
+                      "changes": {
+                        "name": {
+                          "old": "Old Name",
+                          "new": "New Name"
+                        },
+                        "email": {
+                          "old": "[redacted]",
+                          "new": "[redacted]"
+                        }
+                      },
+                      "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+                    }
+                  ],
+                  "page": 1,
+                  "perPage": 50,
+                  "totalCount": 1,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or page",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1048,16 +1094,6 @@
           },
           "403": {
             "description": "Requires the audit:read permission"
-          },
-          "400": {
-            "description": "Invalid filter or page",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
           }
         },
         "security": [
@@ -1434,7 +1470,18 @@
           }
         }
       },
-      "PagedResultOfAuditEntryDto": {
+      "AuditEntryListResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PagedResultOfAuditRecord"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PagedResultOfAuditRecord": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1448,7 +1495,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AuditEntryDto"
+              "$ref": "#/components/schemas/AuditRecord"
             }
           },
           "page": {
@@ -1469,7 +1516,7 @@
           }
         }
       },
-      "AuditEntryDto": {
+      "AuditRecord": {
         "type": "object",
         "additionalProperties": false,
         "required": [
