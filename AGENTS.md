@@ -73,6 +73,12 @@ Dependencies point inward:
 - Async I/O everywhere, passing the request's `CancellationToken`. Avoid N+1 queries, unbounded result sets and unnecessary materialization. List endpoints page with a stable order.
 - Schema changes need a migration (`dotnet ef migrations add ... -o Data/Migrations`, see CLAUDE.md). Review the generated code, then run `dotnet csharpier format .`. A model change without a migration fails CI (`MigrationDriftTests`), and so does a migration whose schema doesn't match the model. Adding a non-null column to an existing table makes EF add a `defaultValue` to fill the existing rows: drop that default in the same migration unless the model declares it.
 
+## 6c. Concurrency ([ADR 019](docs/content/architecture-decisions/adr-019-etags-and-optimistic-concurrency.md))
+
+- An entity that users edit concurrently gets a `uint Version` mapped with `IsRowVersion()` (Postgres `xmin`); its migration must stay snapshot-only.
+- GET returns `EntityTagHeader.Format(version)` as the ETag; PUT parses `If-Match` with `EntityTagHeader.ParseIfMatch` and passes a `VersionPrecondition` to the use case. Return `ConcurrencyResults.PreconditionFailed` (412) or `ConcurrentChange` (409); catch `ConcurrencyConflictException` around the save.
+- Every write to a cached entity invalidates its cache tag, or GET serves a stale ETag.
+
 ## 6a. Auditing ([ADR 017](docs/content/architecture-decisions/adr-017-audit-log.md))
 
 - An entity whose changes matter for accountability implements `IAuditable`, and lists exactly the properties to record in `AddAuditing` (`InfrastructureServiceExtensions`). Never allowlist a secret or token. Personal data is masked automatically when its property or type is `[PersonalData]`.
