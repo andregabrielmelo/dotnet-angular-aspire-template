@@ -18,7 +18,7 @@ public sealed class AuditEntry
 
     public DateTimeOffset OccurredAtUtc { get; init; }
 
-    /// <summary><c>user:{sub}</c>, <c>system:{job id}</c> or <c>anonymous</c>.</summary>
+    /// <summary><c>user:{sub}</c>, <c>system:{job id}</c>, <c>system:outbox</c> or <c>anonymous</c>.</summary>
     public required string Actor { get; init; }
 
     /// <summary>See <c>AuditActions</c>: <c>created</c>, <c>job.paused</c>, ...</summary>
