@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using AppTemplate.Web.Features.AuthenticationFeatures;
 using AppTemplate.Web.Features.JobFeatures;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -51,68 +52,88 @@ public static class RateLimitingConfigurations
         IConfiguration configuration
     )
     {
-        var settings =
-            configuration.GetSection(RateLimitingSettings.SectionName).Get<RateLimitingSettings>()
-            ?? new RateLimitingSettings();
+        services
+            .AddOptions<RateLimitingSettings>()
+            .Bind(configuration.GetSection(RateLimitingSettings.SectionName))
+            .Validate(
+                settings =>
+                    settings.AuthenticatedPermitLimit > 0
+                    && settings.AnonymousPermitLimit > 0
+                    && settings.Window > TimeSpan.Zero,
+                "RateLimiting needs positive permit limits and a positive window."
+            )
+            .ValidateOnStart();
 
-        services.AddRateLimiter(options =>
-        {
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            {
-                if (ClientPartition.IsExcluded(context.Request.Path))
+        services.AddRateLimiter(_ => { });
+        // Read from the registered settings when the options are built, never at registration.
+        services
+            .AddOptions<RateLimiterOptions>()
+            .Configure<IOptions<RateLimitingSettings>>(
+                (options, registered) =>
                 {
-                    return RateLimitPartition.GetNoLimiter(string.Empty);
+                    var settings = registered.Value;
+                    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
+                        context =>
+                        {
+                            if (ClientPartition.IsExcluded(context.Request.Path))
+                            {
+                                return RateLimitPartition.GetNoLimiter(string.Empty);
+                            }
+
+                            var partition = ClientPartition.Of(context);
+                            var permitLimit = partition.StartsWith(
+                                ClientPartition.UserPrefix,
+                                StringComparison.Ordinal
+                            )
+                                ? settings.AuthenticatedPermitLimit
+                                : settings.AnonymousPermitLimit;
+
+                            return FixedWindow(partition, permitLimit, settings.Window);
+                        }
+                    );
+
+                    options.AddPolicy(
+                        RateLimitPolicies.PasswordReset,
+                        context =>
+                            FixedWindow(
+                                ClientPartition.Of(context),
+                                ForgotPasswordEndpoint.RequestsPerWindow,
+                                TimeSpan.FromSeconds(ForgotPasswordEndpoint.WindowSeconds)
+                            )
+                    );
+                    options.AddPolicy(
+                        RateLimitPolicies.JobMutations,
+                        context =>
+                            FixedWindow(
+                                ClientPartition.Of(context),
+                                JobEndpoints.MutationsPerMinute,
+                                TimeSpan.FromMinutes(1)
+                            )
+                    );
+
+                    options.AddPolicy(
+                        RateLimitPolicies.AvatarUploads,
+                        context =>
+                            FixedWindow(
+                                ClientPartition.Of(context),
+                                RateLimitPolicies.AvatarUploadsPerMinute,
+                                TimeSpan.FromMinutes(1)
+                            )
+                    );
+
+                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                    options.OnRejected = (context, _) =>
+                        WriteTooManyRequestsAsync(
+                            context.HttpContext,
+                            context.Lease.TryGetMetadata(
+                                MetadataName.RetryAfter,
+                                out var retryAfter
+                            )
+                                ? retryAfter
+                                : settings.Window
+                        );
                 }
-
-                var partition = ClientPartition.Of(context);
-                var permitLimit = partition.StartsWith(
-                    ClientPartition.UserPrefix,
-                    StringComparison.Ordinal
-                )
-                    ? settings.AuthenticatedPermitLimit
-                    : settings.AnonymousPermitLimit;
-
-                return FixedWindow(partition, permitLimit, settings.Window);
-            });
-
-            options.AddPolicy(
-                RateLimitPolicies.PasswordReset,
-                context =>
-                    FixedWindow(
-                        ClientPartition.Of(context),
-                        ForgotPasswordEndpoint.RequestsPerWindow,
-                        TimeSpan.FromSeconds(ForgotPasswordEndpoint.WindowSeconds)
-                    )
             );
-            options.AddPolicy(
-                RateLimitPolicies.JobMutations,
-                context =>
-                    FixedWindow(
-                        ClientPartition.Of(context),
-                        JobEndpoints.MutationsPerMinute,
-                        TimeSpan.FromMinutes(1)
-                    )
-            );
-
-            options.AddPolicy(
-                RateLimitPolicies.AvatarUploads,
-                context =>
-                    FixedWindow(
-                        ClientPartition.Of(context),
-                        RateLimitPolicies.AvatarUploadsPerMinute,
-                        TimeSpan.FromMinutes(1)
-                    )
-            );
-
-            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.OnRejected = (context, _) =>
-                WriteTooManyRequestsAsync(
-                    context.HttpContext,
-                    context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
-                        ? retryAfter
-                        : settings.Window
-                );
-        });
 
         return services;
     }
