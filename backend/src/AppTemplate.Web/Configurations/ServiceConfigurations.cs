@@ -2,7 +2,9 @@
 using AppTemplate.Infrastructure;
 using AppTemplate.Infrastructure.Email;
 using AppTemplate.Infrastructure.Identity;
+using AppTemplate.UseCases.Idempotency;
 using AppTemplate.UseCases.Telemetry;
+using AppTemplate.UseCases.Users.Update;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -20,6 +22,8 @@ public static class ServiceConfigurations
 
         services.AddScoped<IEmailSender, MimeKitEmailSender>();
         services.AddSingleton<ApplicationMetrics>();
+        // Re-checked before an idempotent replay (see IdempotencyBehavior).
+        services.AddScoped<ICommandAuthorizer<UpdateUserCommand>, UpdateUserAuthorizer>();
 
         services.AddKeycloakAdministration();
 

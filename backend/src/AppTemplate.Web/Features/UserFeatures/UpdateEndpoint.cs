@@ -23,6 +23,13 @@ public sealed class UpdateUserRequest
     public string? PhoneCountryCode { get; set; }
 
     public string? PhoneExtension { get; set; }
+
+    /// <summary>
+    /// Optional. Repeating the request with the same key (within 24 hours) replays the first
+    /// result instead of updating again; the same key with a different body is 422.
+    /// </summary>
+    [FromHeader("Idempotency-Key", IsRequired = false)]
+    public string? IdempotencyKey { get; set; }
 }
 
 public sealed record UpdateUserResponse(UserRecord User);
@@ -66,6 +73,7 @@ public class UpdateEndpoint(IMediator _mediator)
             s.Responses[404] = "User not found";
             s.Responses[409] = "Changed by someone else while saving (no If-Match sent)";
             s.Responses[412] = "If-Match doesn't match the current version";
+            s.Responses[422] = "Idempotency-Key reused with a different request";
         });
 
         Tags("Users");
@@ -79,6 +87,7 @@ public class UpdateEndpoint(IMediator _mediator)
                 .ProducesProblem(404)
                 .ProducesProblem(409)
                 .ProducesProblem(412)
+                .ProducesProblem(422)
         );
     }
 
@@ -107,7 +116,8 @@ public class UpdateEndpoint(IMediator _mediator)
             request.PhoneNumber,
             request.PhoneCountryCode,
             request.PhoneExtension,
-            ifMatch.Precondition
+            ifMatch.Precondition,
+            request.IdempotencyKey
         );
         var result = await _mediator.Send(command, cancellationToken);
         if (result.IsSuccess)
@@ -121,6 +131,8 @@ public class UpdateEndpoint(IMediator _mediator)
 
 public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
 {
+    public const int IdempotencyKeyMaxLength = 64;
+
     public UpdateUserValidator()
     {
         RuleFor(x => x.Name)
@@ -139,6 +151,13 @@ public sealed class UpdateUserValidator : Validator<UpdateUserRequest>
         RuleFor(x => x.PhoneCountryCode).PhoneCountryCode();
         RuleFor(x => x.PhoneNumber).PhoneNumber();
         RuleFor(x => x.PhoneExtension).PhoneExtension();
+        RuleFor(x => x.IdempotencyKey)
+            .Length(1, IdempotencyKeyMaxLength)
+            .Matches("^[A-Za-z0-9_-]+$")
+            .WithMessage(
+                $"Idempotency-Key must be 1 to {IdempotencyKeyMaxLength} letters, digits, '-' or '_' (a UUID works)."
+            )
+            .When(x => x.IdempotencyKey is not null);
     }
 }
 

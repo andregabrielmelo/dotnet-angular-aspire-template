@@ -1,4 +1,5 @@
 using AppTemplate.UseCases.Concurrency;
+using AppTemplate.UseCases.Idempotency;
 using AppTemplate.Web.Configurations;
 
 namespace AppTemplate.Web.Extensions;
@@ -64,6 +65,8 @@ public static class ResultExtensions
                 StatusCodes.Status412PreconditionFailed,
                 ConcurrencyResults.PreconditionFailed
             ),
+            ResultStatus.Conflict when result.Errors.Contains(IdempotencyResults.KeyReused) =>
+                Problem(StatusCodes.Status422UnprocessableEntity, IdempotencyResults.KeyReused),
             ResultStatus.Conflict => Problem(StatusCodes.Status409Conflict, MessagesOf(result)),
             ResultStatus.Unavailable => Problem(
                 StatusCodes.Status503ServiceUnavailable,
