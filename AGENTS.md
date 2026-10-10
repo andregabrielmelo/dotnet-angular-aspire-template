@@ -79,6 +79,11 @@ Dependencies point inward:
 - GET returns `EntityTagHeader.Format(version)` as the ETag; PUT parses `If-Match` with `EntityTagHeader.ParseIfMatch` and passes a `VersionPrecondition` to the use case. Return `ConcurrencyResults.PreconditionFailed` (412) or `ConcurrentChange` (409); catch `ConcurrencyConflictException` around the save.
 - Every write to a cached entity invalidates its cache tag, or GET serves a stale ETag.
 
+## 6d. Idempotency keys ([ADR 019](docs/content/architecture-decisions/adr-019-etags-and-optimistic-concurrency.md))
+
+- A write clients may retry gets `IIdempotentCommand` (an `IdempotencyKey` and a stable `Operation` like `users.update.v1`), an `Idempotency-Key` header on its request, and an `ICommandAuthorizer<T>` repeating its authorization so replays honour revoked access.
+- Its handler runs inside a transaction: keep it short, and send external side effects through the outbox.
+
 ## 6a. Auditing ([ADR 017](docs/content/architecture-decisions/adr-017-audit-log.md))
 
 - An entity whose changes matter for accountability implements `IAuditable`, and lists exactly the properties to record in `AddAuditing` (`InfrastructureServiceExtensions`). Never allowlist a secret or token. Personal data is masked automatically when its property or type is `[PersonalData]`.
