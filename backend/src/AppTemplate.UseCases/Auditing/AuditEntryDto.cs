@@ -23,14 +23,3 @@ public sealed record AuditEntryFilter(
     DateTimeOffset From,
     DateTimeOffset To
 );
-
-/// <summary>Reads the audit log (implemented in Infrastructure).</summary>
-public interface IAuditQueryService
-{
-    Task<PagedResult<AuditEntryDto>> ListAsync(
-        AuditEntryFilter filter,
-        int page,
-        int perPage,
-        CancellationToken cancellationToken
-    );
-}

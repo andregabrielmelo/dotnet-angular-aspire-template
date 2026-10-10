@@ -1,7 +1,9 @@
 namespace AppTemplate.UseCases.Auditing.List;
 
-public sealed class ListAuditEntriesHandler(IAuditQueryService _audit, TimeProvider _timeProvider)
-    : IQueryHandler<ListAuditEntriesQuery, Result<PagedResult<AuditEntryDto>>>
+public sealed class ListAuditEntriesHandler(
+    IListAuditEntriesQueryService _audit,
+    TimeProvider _timeProvider
+) : IQueryHandler<ListAuditEntriesQuery, Result<PagedResult<AuditEntryDto>>>
 {
     public async ValueTask<Result<PagedResult<AuditEntryDto>>> Handle(
         ListAuditEntriesQuery query,

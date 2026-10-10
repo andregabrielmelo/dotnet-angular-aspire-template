@@ -7,6 +7,7 @@ using AppTemplate.FunctionalTests.Jobs;
 using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs;
+using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.UseCases.Auditing;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.Web.Features.UserFeatures;
@@ -47,7 +48,7 @@ public class AuditingTests(AppTemplateWebApplicationFactory factory)
     private static Dictionary<string, AuditValueChange> ChangesOf(AuditEntry entry) =>
         JsonSerializer.Deserialize<Dictionary<string, AuditValueChange>>(
             entry.Changes!,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            AuditEntry.ChangesJsonOptions
         )!;
 
     private async Task<CurrentUserResponse> ProvisionAsync(string subject) =>
@@ -321,6 +322,45 @@ public class AuditingTests(AppTemplateWebApplicationFactory factory)
             .GetFromJsonAsync<JsonElement>($"/v1/admin/audit?entityType=test&entityKey={key}");
 
         Assert.Single(page.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Query_LinksPagesKeepingTheFilters()
+    {
+        var key = Guid.NewGuid().ToString("N");
+        await InScopeAsync(async services =>
+        {
+            var context = services.GetRequiredService<ApplicationDatabaseContext>();
+            for (var i = 0; i < 3; i++)
+            {
+                context.AuditEntries.Add(
+                    new AuditEntry
+                    {
+                        Id = Guid.CreateVersion7(),
+                        OccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-i),
+                        Actor = "anonymous",
+                        Action = "test.paging",
+                        EntityType = "test",
+                        EntityKey = key,
+                        Outcome = "succeeded",
+                    }
+                );
+            }
+            return await context.SaveChangesAsync();
+        });
+
+        var response = await factory
+            .CreateAuthenticatedClient(NewSubject(), Permission.AuditRead)
+            .GetAsync($"/v1/admin/audit?entityType=test&entityKey={key}&per_page=1&page=2");
+
+        response.EnsureSuccessStatusCode();
+        var page = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(3, page.GetProperty("totalPages").GetInt32());
+        var link = Assert.Single(response.Headers.GetValues("Link"));
+        Assert.Contains("rel=\"next\"", link);
+        Assert.Contains("rel=\"prev\"", link);
+        Assert.Contains($"entityKey={key}", link);
+        Assert.Contains("page=3", link);
     }
 
     [Fact]

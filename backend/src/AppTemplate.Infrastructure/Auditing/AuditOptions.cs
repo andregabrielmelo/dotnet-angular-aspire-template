@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 
 namespace AppTemplate.Infrastructure.Auditing;
 

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace AppTemplate.Infrastructure.Auditing;
 
 /// <summary>One audited action (table <c>audit_entries</c>). Append-only: nothing updates a row.</summary>
@@ -6,11 +8,17 @@ public sealed class AuditEntry
     /// <summary>What a personal or secret value is recorded as.</summary>
     public const string Masked = "[redacted]";
 
+    /// <summary>
+    /// The storage format of <see cref="Changes"/>, shared by the writer and every reader. Kept
+    /// apart from the API's JSON settings: stored rows must stay readable when those change.
+    /// </summary>
+    public static readonly JsonSerializerOptions ChangesJsonOptions = JsonSerializerOptions.Web;
+
     public Guid Id { get; init; }
 
     public DateTimeOffset OccurredAtUtc { get; init; }
 
-    /// <summary><c>user:{sub}</c>, <c>system:{job id}</c> or <c>anonymous</c>.</summary>
+    /// <summary><c>user:{sub}</c>, <c>system:{job id}</c>, <c>system:outbox</c> or <c>anonymous</c>.</summary>
     public required string Actor { get; init; }
 
     /// <summary>See <c>AuditActions</c>: <c>created</c>, <c>job.paused</c>, ...</summary>
@@ -27,30 +35,4 @@ public sealed class AuditEntry
     public string? Changes { get; init; }
 
     public string? TraceId { get; init; }
-}
-
-internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
-{
-    public void Configure(EntityTypeBuilder<AuditEntry> builder)
-    {
-        builder.ToTable("audit_entries");
-        builder.HasKey(entry => entry.Id);
-        builder.Property(entry => entry.Actor).HasMaxLength(200);
-        builder.Property(entry => entry.Action).HasMaxLength(100);
-        builder.Property(entry => entry.EntityType).HasMaxLength(100);
-        builder.Property(entry => entry.EntityKey).HasMaxLength(200);
-        builder.Property(entry => entry.Outcome).HasMaxLength(20);
-        builder.Property(entry => entry.Changes).HasColumnType("jsonb");
-        builder.Property(entry => entry.TraceId).HasMaxLength(64);
-
-        // The query endpoint filters only on these, always with a time range.
-        builder.HasIndex(entry => entry.OccurredAtUtc);
-        builder.HasIndex(entry => new
-        {
-            entry.EntityType,
-            entry.EntityKey,
-            entry.OccurredAtUtc,
-        });
-        builder.HasIndex(entry => new { entry.Actor, entry.OccurredAtUtc });
-    }
 }
