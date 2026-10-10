@@ -149,7 +149,8 @@ internal sealed class SkiaImageProcessor : IImageProcessor
                 canvas.RotateDegrees(-90);
                 break;
         }
-        canvas.DrawBitmap(source, 0, 0);
+        // A 1:1 draw (only 90° rotations and flips), so sampling never blends pixels.
+        canvas.DrawBitmap(source, 0, 0, SKSamplingOptions.Default);
         return target;
     }
 
