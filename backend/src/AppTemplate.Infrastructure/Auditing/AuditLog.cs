@@ -78,36 +78,38 @@ internal sealed class AuditQueryService(ApplicationDatabaseContext context) : IA
         }
 
         var total = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(total / (double)perPage);
         var entries = await query
             .OrderByDescending(entry => entry.OccurredAtUtc)
             .ThenByDescending(entry => entry.Id)
             .Skip((page - 1) * perPage)
             .Take(perPage)
             .ToListAsync(cancellationToken);
+        var items = entries
+            .Select(entry => new AuditEntryDto(
+                entry.Id,
+                entry.OccurredAtUtc,
+                entry.Actor,
+                entry.Action,
+                entry.EntityType,
+                entry.EntityKey,
+                entry.Outcome,
+                entry.Changes is null
+                    ? null
+                    : JsonSerializer.Deserialize<Dictionary<string, AuditValueChange>>(
+                        entry.Changes,
+                        Json
+                    ),
+                entry.TraceId
+            ))
+            .ToList();
 
         return new PagedResult<AuditEntryDto>(
-            entries
-                .Select(entry => new AuditEntryDto(
-                    entry.Id,
-                    entry.OccurredAtUtc,
-                    entry.Actor,
-                    entry.Action,
-                    entry.EntityType,
-                    entry.EntityKey,
-                    entry.Outcome,
-                    entry.Changes is null
-                        ? null
-                        : JsonSerializer.Deserialize<Dictionary<string, AuditValueChange>>(
-                            entry.Changes,
-                            Json
-                        ),
-                    entry.TraceId
-                ))
-                .ToList(),
+            items,
             page,
             perPage,
             total,
-            (int)Math.Ceiling(total / (double)perPage)
+            totalPages
         );
     }
 }
