@@ -124,6 +124,8 @@ Strongly-typed IDs and simple domain primitives (`UserId`, `UserName`) use [Voge
 
 Health probes (`ServiceDefaults/Extensions.cs`, every environment): `/alive` (process), `/health` (readiness: Postgres only, tag `ready`), `/health/dependencies` (optional dependencies such as Redis, tag `dependency`, always 200 with `Degraded`). Redis is optional at runtime too: `Web/Caching/FailOpenRedis.cs` skips it while it's disconnected.
 
+Business metrics: `UseCases/Telemetry/ApplicationMetrics.cs` (meter `AppTemplate.Application`; `users.provisioned`, `welcome_emails.sent`, `jobs.runs`, `jobs.duration`), exported with Npgsql and EF Core metrics and Npgsql spans by ServiceDefaults. Tags stay bounded.
+
 Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks.
 
 Rate limiting (`Web/Configurations/RateLimitingConfigurations.cs`) is a global limiter plus named per-endpoint policies (`RateLimitPolicies`), partitioned by validated `sub` or by client address. `X-Forwarded-For` is honored only from `ForwardedHeaders:KnownProxies` (loopback in Development). Every request has a 30-second timeout (`RequestTimeoutConfigurations.cs`, 504 problem details). Don't use FastEndpoints' `Throttle`; see `docs/content/best-practices.md`.

@@ -65,6 +65,21 @@ Explicit guidelines for projects built from this template, so every project that
 - **Request timeouts.** Every request gets 30 seconds (`RequestTimeouts:Default`), after which `HttpContext.RequestAborted` is cancelled and the client gets a 504 problem details response. Pass the `CancellationToken` through to EF Core and HttpClient calls so the work actually stops. An endpoint that waits on an external service with retries opts into `RequestTimeoutPolicies.ExternalCall` (45 seconds). Timeouts are disabled while a debugger is attached.
 - **A timeout doesn't undo anything.** If the transaction already committed, or an email or HTTP call already went out, it stays done even though the client got a 504. Make writes safe to retry, or make them idempotent.
 
+## Metrics
+
+- **Business metrics** live in one class, `UseCases/Telemetry/ApplicationMetrics.cs` (meter `AppTemplate.Application`, built on `System.Diagnostics.Metrics`). ServiceDefaults exports every `AppTemplate.*` meter over OpenTelemetry, so they show up in the Aspire dashboard's **Metrics** tab next to the ASP.NET Core, HttpClient, runtime, Npgsql and EF Core metrics.
+
+  | Instrument | Unit | Incremented when | Tags |
+  |---|---|---|---|
+  | `users.provisioned` | `{user}` | a user row is created on first sign-in | - |
+  | `welcome_emails.sent` | `{email}` | the mail server **accepted** the email (not when the job was enqueued) | - |
+  | `jobs.runs` | `{run}` | a recurring job or the welcome email job finishes | `job`, `outcome` (`succeeded`/`failed`/`skipped`) |
+  | `jobs.duration` | `s` | same | same |
+
+- **Count what happened, where it happened.** Increment right after the call that makes it true (`AddAsync` returned, the SMTP send returned), so a failure never counts. Test each increment point with `MetricCollector<T>` (`TestMetrics` in unit tests, `factory.CollectMetric<T>` in functional tests), including that a failure records nothing.
+- **Tags must stay bounded.** Never a user id, email, file name or anything else per-user or from input: every distinct value is a new time series. Job ids are fine because they come from code; an unknown job id read from storage is never recorded.
+- Adding a metric for a new feature: add the instrument and a method to `ApplicationMetrics`, call it from the handler, and add a row to this table.
+
 ## Health checks
 
 - **Policy: Postgres is required; Redis (and later file storage) is optional.** Without Postgres an instance can't serve anything. Without Redis it serves everything, slightly slower, from its in-memory cache and Postgres.
