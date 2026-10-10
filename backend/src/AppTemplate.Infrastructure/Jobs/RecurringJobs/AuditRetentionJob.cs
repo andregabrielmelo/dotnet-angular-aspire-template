@@ -1,9 +1,9 @@
+using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
-using AppTemplate.Infrastructure.Jobs;
 using Hangfire;
 using Microsoft.Extensions.Options;
 
-namespace AppTemplate.Infrastructure.Auditing;
+namespace AppTemplate.Infrastructure.Jobs.RecurringJobs;
 
 /// <summary>Daily: deletes audit entries older than <c>Audit:RetentionDays</c>.</summary>
 public sealed partial class AuditRetentionJob(

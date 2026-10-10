@@ -1,5 +1,6 @@
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Jobs.Extensions;
+using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.UseCases.Auditing;
 using AppTemplate.UseCases.Auditing.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;

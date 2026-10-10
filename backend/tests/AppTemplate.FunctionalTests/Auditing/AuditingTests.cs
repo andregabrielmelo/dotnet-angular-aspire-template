@@ -7,6 +7,7 @@ using AppTemplate.FunctionalTests.Jobs;
 using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs;
+using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.UseCases.Auditing;
 using AppTemplate.UseCases.Authorization;
 using AppTemplate.Web.Features.UserFeatures;
