@@ -91,6 +91,20 @@ public class AvatarTests(GarageFactory factory) : IClassFixture<GarageFactory>
     }
 
     [Fact]
+    public async Task ReachableStorage_HasAHealthyFileStorageCheck()
+    {
+        var report = await factory
+            .Services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>()
+            .CheckHealthAsync(registration => registration.Name == "file-storage");
+
+        var entry = Assert.Single(report.Entries);
+        Assert.Equal(
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy,
+            entry.Value.Status
+        );
+    }
+
+    [Fact]
     public async Task Owner_UploadsAndReadsBackAReEncodedAvatar()
     {
         var (client, me) = await SignInAsync();
