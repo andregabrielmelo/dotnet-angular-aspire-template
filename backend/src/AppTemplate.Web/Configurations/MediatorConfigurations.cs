@@ -1,5 +1,6 @@
-﻿using AppTemplate.Core.Aggregates.UserAggregate;
+using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure;
+using AppTemplate.UseCases.Behaviors;
 using AppTemplate.UseCases.Users;
 
 namespace AppTemplate.Web.Configurations;

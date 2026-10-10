@@ -1,4 +1,7 @@
-﻿namespace AppTemplate.SharedKernel;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+
+namespace AppTemplate.UseCases.Behaviors;
 
 /// <summary>
 /// Logs every command and query through the Mediator pipeline. The request is destructured
