@@ -146,63 +146,6 @@ namespace AppTemplate.Infrastructure.Data.Migrations
                     b.ToTable("audit_entries", (string)null);
                 });
 
-            modelBuilder.Entity("AppTemplate.Infrastructure.Idempotency.IdempotencyRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at_utc");
-
-                    b.Property<string>("Fingerprint")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character(64)")
-                        .HasColumnName("fingerprint")
-                        .IsFixedLength();
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Operation")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("operation");
-
-                    b.Property<string>("ResultPayload")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("result_payload");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("subject");
-
-                    b.HasKey("Id")
-                        .HasName("pk_idempotency_records");
-
-                    b.HasIndex("ExpiresAtUtc")
-                        .HasDatabaseName("ix_idempotency_records_expires_at_utc");
-
-                    b.HasIndex("Subject", "Operation", "Key")
-                        .IsUnique()
-                        .HasDatabaseName("ix_idempotency_records_subject_operation_key");
-
-                    b.ToTable("idempotency_records", (string)null);
-                });
-
             modelBuilder.Entity("AppTemplate.Infrastructure.Outbox.InboxMessage", b =>
                 {
                     b.Property<Guid>("MessageId")

@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure.Auditing;
-using AppTemplate.Infrastructure.Idempotency;
 using AppTemplate.Infrastructure.Outbox;
 
 namespace AppTemplate.Infrastructure.Data;
@@ -16,8 +15,6 @@ public class ApplicationDatabaseContext(DbContextOptions<ApplicationDatabaseCont
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
-
-    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     // Override OnModelCreating to apply class configurations from the assembly
     protected override void OnModelCreating(ModelBuilder modelBuilder)

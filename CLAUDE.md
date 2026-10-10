@@ -130,8 +130,6 @@ File storage (ADR 018): `IFileStorage` over S3 (`Infrastructure/Files/`, AWSSDK.
 
 Optimistic concurrency (ADR 019): `User.Version` is Postgres `xmin` (`IsRowVersion()`; its migration is snapshot-only, since EF would scaffold an invalid `AddColumn xmin`). `GET`/`PUT /v1/users/{id}` return it as a strong ETag; `PUT` honours `If-Match` (`Web/Http/EntityTagHeader`): a mismatch gives 412, a race without `If-Match` gives 409. The repository turns EF's concurrency exception into `ConcurrencyConflictException`.
 
-Idempotency keys (ADR 019): `PUT /v1/users/{id}` accepts `Idempotency-Key`. `IdempotencyBehavior` (Mediator pipeline, for `IIdempotentCommand`s) authorizes, claims a row in `idempotency_records` before the handler, and commits it with the result in one transaction (`IUnitOfWork`). Repeats replay the stored `Result`, a different body is 422, and a concurrent duplicate waits on the unique index, then replays. Cache invalidation inside a transaction waits for the commit. `IdempotencyCleanupJob` deletes records after 24 hours.
-
 Business metrics: `UseCases/Telemetry/ApplicationMetrics.cs` (meter `AppTemplate.Application`; `users.provisioned`, `welcome_emails.sent`, `jobs.runs`, `jobs.duration`), exported with Npgsql and EF Core metrics and Npgsql spans by ServiceDefaults. Tags stay bounded.
 
 Logging is Serilog only, configured for every host by `AddServiceDefaults()` (`ServiceDefaults/Logging/`): console plus OTLP export (Aspire dashboard), one request log line per request (`UseDefaultRequestLogging`), and redaction of classified, sensitively named and pattern-matched values before either sink. `LogRedactionTests` checks the serialized output of both sinks.
