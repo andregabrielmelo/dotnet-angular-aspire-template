@@ -1,5 +1,4 @@
 using AppTemplate.Infrastructure.Data;
-using Hangfire;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AppTemplate.Infrastructure.Outbox;
@@ -81,19 +80,4 @@ internal sealed class OutboxInterceptor(
         _wroteMessages = false;
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
-}
-
-/// <summary>
-/// Resolves Hangfire's client only when there's something to deliver: every DbContext gets
-/// this trigger through its interceptor, and most never write an outbox message.
-/// </summary>
-internal sealed class HangfireOutboxTrigger(IServiceProvider services) : IOutboxTrigger
-{
-    public void MessagesWritten() =>
-        services
-            .GetRequiredService<IBackgroundJobClient>()
-            .Enqueue<ProcessOutboxJob>(
-                AppTemplate.Infrastructure.Jobs.JobQueues.Critical,
-                job => job.ExecuteAsync(CancellationToken.None)
-            );
 }

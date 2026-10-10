@@ -1,4 +1,5 @@
 using AppTemplate.Infrastructure.Jobs.Extensions;
+using AppTemplate.Infrastructure.Outbox.Triggers;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
