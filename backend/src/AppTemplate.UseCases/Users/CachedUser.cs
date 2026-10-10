@@ -17,7 +17,8 @@ public sealed record CachedUser(
     string Email,
     string? PhoneCountryCode,
     string? PhoneLocalNumber,
-    string? PhoneExtension
+    string? PhoneExtension,
+    uint Version
 )
 {
     /// <summary>
@@ -44,7 +45,8 @@ public sealed record CachedUser(
             user.Email.Value,
             user.PhoneNumber?.CountryCode,
             user.PhoneNumber?.Number,
-            user.PhoneNumber?.Extension
+            user.PhoneNumber?.Extension,
+            user.Version
         );
 
     public UserDto ToUserDto() =>
@@ -57,6 +59,7 @@ public sealed record CachedUser(
                     PhoneCountryCode ?? string.Empty,
                     PhoneLocalNumber,
                     PhoneExtension
-                )
+                ),
+            Version
         );
 }
