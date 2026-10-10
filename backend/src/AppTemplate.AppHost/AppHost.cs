@@ -62,6 +62,8 @@ var api = builder
     )
     .WaitFor(mailpit)
     .WithHttpEndpoint(name: "api-http")
+    // Readiness (Postgres reachable): resources that WaitFor(api) start only once it's ready.
+    .WithHttpHealthCheck("/health")
     // Hangfire dashboard (Development only, local requests only).
     .WithUrlForEndpoint(
         "http",
@@ -73,6 +75,7 @@ var frontend = builder
     .AddJavaScriptApp("angular", "../../../frontend", runScriptName: "start")
     .WithNpm(installCommand: "ci")
     .WithHttpEndpoint(env: "PORT")
+    .WithHttpHealthCheck("/")
     .PublishAsDockerFile();
 
 // The browser's single entry point: owns the session cookie, runs the OIDC flow against
@@ -85,6 +88,7 @@ var backendForFrontend = builder
     )
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithHttpsEndpoint(port: 7100, name: "https")
+    .WithHttpHealthCheck("/health", endpointName: "https")
     .WithEnvironment("Keycloak__ClientSecret", backendForFrontendSecret)
     .WithReference(keycloak)
     .WaitFor(keycloak)
