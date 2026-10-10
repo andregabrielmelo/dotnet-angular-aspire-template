@@ -64,13 +64,6 @@ internal sealed class S3FileStorage(IAmazonS3 client, IOptions<FileStorageOption
             return true;
         });
 
-    /// <summary>Lists at most one key: cheap proof that the endpoint, credentials and bucket work.</summary>
-    public Task ProbeAsync(CancellationToken cancellationToken) =>
-        client.ListObjectsV2Async(
-            new ListObjectsV2Request { BucketName = Bucket, MaxKeys = 1 },
-            cancellationToken
-        );
-
     private static async Task<T> GuardAsync<T>(Func<Task<T>> operation)
     {
         try

@@ -65,10 +65,7 @@ public static class FileStorageServiceExtensions
                 }
             );
         });
-        services.AddSingleton<S3FileStorage>();
-        services.AddSingleton<IFileStorage>(provider =>
-            provider.GetRequiredService<S3FileStorage>()
-        );
+        services.AddSingleton<IFileStorage, S3FileStorage>();
         services
             .AddHealthChecks()
             .AddCheck<FileStorageHealthCheck>(
@@ -79,27 +76,5 @@ public static class FileStorageServiceExtensions
             );
 
         return services;
-    }
-}
-
-internal sealed class FileStorageHealthCheck(S3FileStorage storage) : IHealthCheck
-{
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default
-    )
-    {
-        try
-        {
-            await storage.ProbeAsync(cancellationToken);
-            return HealthCheckResult.Healthy();
-        }
-        catch (Exception exception)
-            when (exception is not OperationCanceledException
-                || !cancellationToken.IsCancellationRequested
-            )
-        {
-            return new HealthCheckResult(context.Registration.FailureStatus, exception: exception);
-        }
     }
 }
