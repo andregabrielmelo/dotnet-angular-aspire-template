@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.UseCases.Telemetry;
 using Hangfire;
 
@@ -13,6 +14,7 @@ namespace AppTemplate.Infrastructure.Jobs;
 public sealed partial class RecurringJobRunner(
     IEnumerable<IRecurringJobDefinition> definitions,
     ApplicationMetrics metrics,
+    AuditActorContext auditActor,
     ILogger<RecurringJobRunner> logger
 )
 {
@@ -36,6 +38,9 @@ public sealed partial class RecurringJobRunner(
             LogUnknownJob(logger, jobId);
             return;
         }
+
+        // Changes this run makes are audited as the job, not as a user.
+        auditActor.SystemActor = $"system:{jobId}";
 
         var stopwatch = Stopwatch.StartNew();
         try

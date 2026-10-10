@@ -177,7 +177,7 @@
     "realm": [
       {
         "name": "admin",
-        "description": "Full administration: users and background jobs (all apptemplate-api permissions)",
+        "description": "Full administration: users, background jobs and the audit log (all apptemplate-api permissions)",
         "composite": true,
         "composites": {
           "client": {
@@ -186,7 +186,8 @@
               "users:write",
               "users:delete",
               "jobs:read",
-              "jobs:manage"
+              "jobs:manage",
+              "audit:read"
             ]
           }
         }
@@ -213,6 +214,10 @@
         {
           "name": "jobs:manage",
           "description": "Trigger, pause, resume, remove and restore recurring background jobs"
+        },
+        {
+          "name": "audit:read",
+          "description": "Read the audit log"
         }
       ]
     }

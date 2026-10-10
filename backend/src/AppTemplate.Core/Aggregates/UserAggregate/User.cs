@@ -9,7 +9,8 @@ namespace AppTemplate.Core.Aggregates.UserAggregate;
 /// </summary>
 public class User(string externalId, UserName name, EmailAddress email)
     : EntityBase<User, UserId>,
-        IAggregateRoot
+        IAggregateRoot,
+        IAuditable
 {
     public const int ExternalIdMaxLength = 64;
 

@@ -23,6 +23,9 @@ public static class Permission
     /// <summary>Trigger, pause, resume, remove and restore recurring background jobs.</summary>
     public const string JobsManage = "jobs:manage";
 
+    /// <summary>Read the audit log.</summary>
+    public const string AuditRead = "audit:read";
+
     public static IReadOnlyList<string> All { get; } =
-    [UsersRead, UsersWrite, UsersDelete, JobsRead, JobsManage];
+    [UsersRead, UsersWrite, UsersDelete, JobsRead, JobsManage, AuditRead];
 }
