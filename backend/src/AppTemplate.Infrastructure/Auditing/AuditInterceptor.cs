@@ -23,8 +23,6 @@ internal sealed class AuditInterceptor(
     TimeProvider timeProvider
 ) : SaveChangesInterceptor
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,
@@ -92,7 +90,10 @@ internal sealed class AuditInterceptor(
             EntityType = entry.Metadata.ClrType.Name,
             EntityKey = KeyOf(entry),
             Outcome = AuditOutcome.Succeeded.ToString().ToLowerInvariant(),
-            Changes = changes.Count == 0 ? null : JsonSerializer.Serialize(changes, Json),
+            Changes =
+                changes.Count == 0
+                    ? null
+                    : JsonSerializer.Serialize(changes, AuditEntry.ChangesJsonOptions),
             TraceId = Activity.Current?.TraceId.ToString(),
         };
     }

@@ -52,8 +52,6 @@ internal sealed class NullAuditLog : IAuditLog
 
 internal sealed class AuditQueryService(ApplicationDatabaseContext context) : IAuditQueryService
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     public async Task<PagedResult<AuditEntryDto>> ListAsync(
         AuditEntryFilter filter,
         int page,
@@ -98,18 +96,12 @@ internal sealed class AuditQueryService(ApplicationDatabaseContext context) : IA
                     ? null
                     : JsonSerializer.Deserialize<Dictionary<string, AuditValueChange>>(
                         entry.Changes,
-                        Json
+                        AuditEntry.ChangesJsonOptions
                     ),
                 entry.TraceId
             ))
             .ToList();
 
-        return new PagedResult<AuditEntryDto>(
-            items,
-            page,
-            perPage,
-            total,
-            totalPages
-        );
+        return new PagedResult<AuditEntryDto>(items, page, perPage, total, totalPages);
     }
 }

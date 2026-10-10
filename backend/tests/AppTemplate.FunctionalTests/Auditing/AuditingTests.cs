@@ -47,7 +47,7 @@ public class AuditingTests(AppTemplateWebApplicationFactory factory)
     private static Dictionary<string, AuditValueChange> ChangesOf(AuditEntry entry) =>
         JsonSerializer.Deserialize<Dictionary<string, AuditValueChange>>(
             entry.Changes!,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            AuditEntry.ChangesJsonOptions
         )!;
 
     private async Task<CurrentUserResponse> ProvisionAsync(string subject) =>
