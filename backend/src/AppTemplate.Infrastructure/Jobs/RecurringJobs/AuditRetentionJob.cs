@@ -21,6 +21,11 @@ public sealed partial class AuditRetentionJob(
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        if (!options.Value.Enabled)
+        {
+            return; // auditing is off: leave existing entries as they are
+        }
+
         var cutoff = timeProvider.GetUtcNow().AddDays(-options.Value.RetentionDays);
         var deleted = await context
             .AuditEntries.Where(entry => entry.OccurredAtUtc < cutoff)

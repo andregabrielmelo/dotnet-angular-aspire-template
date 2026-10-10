@@ -29,7 +29,7 @@ internal sealed class AuditInterceptor(
         CancellationToken cancellationToken = default
     )
     {
-        if (eventData.Context is ApplicationDatabaseContext context)
+        if (options.Value.Enabled && eventData.Context is ApplicationDatabaseContext context)
         {
             context.ChangeTracker.DetectChanges();
             var entries = context

@@ -107,6 +107,18 @@ Explicit guidelines for projects built from this template, so every project that
 - `AppTemplate.ServiceDefaults` (wired into `Web` via `AddServiceDefaults()`) is where cross-cutting concerns (OpenTelemetry, health checks, service discovery, retries) belong - once for the whole app, not duplicated per-service.
 - The AppHost is a local-orchestration and manifest-generation tool (see [ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})) - it is not itself a production runtime.
 
+## Options
+
+Configuration reaches code through registered, validated options, never through values invented where they're used.
+
+- **Register before use.** `AddOptions<T>().Bind(section)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` only runs the rules you wrote: without a rule, a missing value is just the default.
+- **No fallbacks at the call site.** `GetSection(...).Get<T>() ?? new T()` and `configuration["Key"] ?? "literal"` hide a misspelt section or a forgotten registration behind defaults that look like they work. Read `IOptions<T>` when the consumer is built instead: in a DI factory, or for framework options with `AddOptions<TFramework>().Configure<IOptions<T>>(...)`. Registration-time code only registers.
+- **Three kinds of settings.**
+  - *Required*: validated as present, and missing fails startup with the key in the message. Plain required values (the Keycloak realm, audience and client id) use `GetRequiredValue`, read at registration so they fail at startup rather than on the first request.
+  - *Optional feature*: empty means off, by design (`FileStorage:ServiceUrl`). When it's on, every setting is validated, so a half-configured feature fails instead of silently switching itself off.
+  - *Safe defaults*: the default lives in the options class and the bound result is still validated. `appsettings*.json` keeps only the values we set.
+- **Tested per composition root.** Each host's tests list the options it needs and assert they're registered and validated (`OptionsRegistrationTests`, the backend for frontend's `ConfigurationTests`), plus startup tests for a missing required value and a partial optional feature. A global reflection rule would force every options type into every host, which is the wrong boundary.
+
 ## Third-party configuration files
 
 Configuration files for services we run but don't write, such as `AppHost/Garage/garage.toml`, list every option the pinned version supports:

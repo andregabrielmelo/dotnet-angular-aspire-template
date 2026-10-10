@@ -1,4 +1,4 @@
-﻿using AppTemplate.Infrastructure.Email;
+using AppTemplate.Infrastructure.Email;
 using AppTemplate.UseCases.Users.SendWelcomeEmail;
 
 namespace AppTemplate.Web.Configurations;
@@ -13,16 +13,31 @@ public static class OptionConfigurations
     )
     {
         services
-            .Configure<MailserverConfiguration>(configuration.GetSection("Mailserver"))
-            .Configure<WelcomeEmailOptions>(
-                configuration.GetSection(WelcomeEmailOptions.SectionName)
+            .AddOptions<MailserverConfiguration>()
+            .Bind(configuration.GetSection(MailserverConfiguration.SectionName))
+            .Validate(
+                mail => !string.IsNullOrWhiteSpace(mail.Hostname) && mail.Port is > 0 and <= 65535,
+                "Mailserver needs a Hostname and a Port between 1 and 65535."
             )
-            // Configure Web Behavior
-            .Configure<CookiePolicyOptions>(options =>
-            {
-                options.CheckConsentNeeded = context => true;
-                options.MinimumSameSitePolicy = SameSiteMode.None;
-            });
+            .ValidateOnStart();
+        services
+            .AddOptions<WelcomeEmailOptions>()
+            .Bind(configuration.GetSection(WelcomeEmailOptions.SectionName))
+            .Validate(
+                email =>
+                    !string.IsNullOrWhiteSpace(email.From)
+                    && !string.IsNullOrWhiteSpace(email.Subject),
+                "WelcomeEmail needs a From address and a Subject."
+            )
+            .ValidateOnStart();
+
+        services
+        // Configure Web Behavior
+        .Configure<CookiePolicyOptions>(options =>
+        {
+            options.CheckConsentNeeded = context => true;
+            options.MinimumSameSitePolicy = SameSiteMode.None;
+        });
 
         logger.LogInformation("{Project} were configured", "Options");
 

@@ -465,6 +465,43 @@ public class AuditingDisabledTests(AuditingDisabledTests.NoAuditFactory factory)
         );
     }
 
+    [Fact]
+    public async Task WithAuditingOff_TheRetentionJobDeletesNothing()
+    {
+        var key = Guid.NewGuid().ToString("N");
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDatabaseContext>();
+            context.AuditEntries.Add(
+                new AuditEntry
+                {
+                    Id = Guid.CreateVersion7(),
+                    OccurredAtUtc = DateTimeOffset.UtcNow.AddDays(-1000),
+                    Actor = "anonymous",
+                    Action = "test.retention",
+                    EntityType = "test",
+                    EntityKey = key,
+                    Outcome = "succeeded",
+                }
+            );
+            await context.SaveChangesAsync();
+        }
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope
+                .ServiceProvider.GetRequiredService<AuditRetentionJob>()
+                .ExecuteAsync(CancellationToken.None);
+        }
+
+        await using var check = factory.Services.CreateAsyncScope();
+        Assert.True(
+            await check
+                .ServiceProvider.GetRequiredService<ApplicationDatabaseContext>()
+                .AuditEntries.AnyAsync(entry => entry.EntityKey == key)
+        );
+    }
+
     public sealed class NoAuditFactory : AppTemplateWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)

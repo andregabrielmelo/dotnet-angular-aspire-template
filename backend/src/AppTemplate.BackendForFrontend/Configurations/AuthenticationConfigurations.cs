@@ -1,4 +1,5 @@
-﻿using Duende.AccessTokenManagement.OpenIdConnect;
+using AppTemplate.ServiceDefaults;
+using Duende.AccessTokenManagement.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
@@ -28,6 +29,9 @@ public static class AuthenticationConfigurations
     )
     {
         var keycloak = builder.Configuration.GetSection("Keycloak");
+        // Required: read here so a missing value stops startup, not the first sign-in.
+        var realm = builder.Configuration.GetRequiredValue("Keycloak:Realm");
+        var clientId = builder.Configuration.GetRequiredValue("Keycloak:ClientId");
 
         services
             .AddAuthentication(options =>
@@ -63,10 +67,10 @@ public static class AuthenticationConfigurations
             )
             .AddKeycloakOpenIdConnect(
                 serviceName: "keycloak",
-                realm: keycloak["Realm"] ?? "apptemplate",
+                realm: realm,
                 options =>
                 {
-                    options.ClientId = keycloak["ClientId"] ?? "apptemplate-backend-for-frontend";
+                    options.ClientId = clientId;
                     options.ClientSecret = keycloak["ClientSecret"];
                     options.ResponseType = OpenIdConnectResponseType.Code;
                     options.UsePkce = true;

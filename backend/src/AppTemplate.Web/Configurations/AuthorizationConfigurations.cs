@@ -1,4 +1,5 @@
-﻿using AppTemplate.UseCases.Authorization;
+using AppTemplate.ServiceDefaults;
+using AppTemplate.UseCases.Authorization;
 using AppTemplate.Web.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -20,12 +21,12 @@ public static class AuthorizationConfigurations
         WebApplicationBuilder builder
     )
     {
+        // Required: read here so a missing value stops startup, not the first request.
+        var apiClientId = builder.Configuration.GetRequiredValue("Keycloak:Audience");
         services
             .AddOptions<KeycloakAuthorizationOptions>()
-            .Configure(options =>
-                options.ApiClientId =
-                    builder.Configuration["Keycloak:Audience"] ?? options.ApiClientId
-            );
+            // The API's client id is the token audience: one required setting for both.
+            .Configure(options => options.ApiClientId = apiClientId);
         services.AddTransient<IClaimsTransformation, KeycloakPermissionsClaimsTransformation>();
 
         // Routes without authorization metadata (anything mapped outside FastEndpoints that

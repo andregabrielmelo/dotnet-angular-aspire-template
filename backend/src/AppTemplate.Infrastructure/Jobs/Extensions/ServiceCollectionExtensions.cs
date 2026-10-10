@@ -1,4 +1,4 @@
-﻿using AppTemplate.Infrastructure.Jobs.Options;
+using AppTemplate.Infrastructure.Jobs.Options;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
 using AppTemplate.Infrastructure.Jobs.Services;
 using AppTemplate.UseCases.Jobs;
@@ -7,6 +7,7 @@ using Hangfire.Logging;
 using Hangfire.PostgreSql;
 using Hangfire.PostgreSql.Factories;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Infrastructure.Jobs.Extensions;
@@ -35,14 +36,11 @@ public static class ServiceCollectionExtensions
         >();
         services.TryAddSingleton(TimeProvider.System);
 
-        var options =
-            configuration.GetSection(JobSchedulingOptions.SectionName).Get<JobSchedulingOptions>()
-            ?? new JobSchedulingOptions();
-
         // Registered directly rather than with UsePostgreSqlStorage(), which also sets the static
         // JobStorage.Current - process-wide state this project avoids.
-        services.AddSingleton<JobStorage>(_ =>
+        services.AddSingleton<JobStorage>(provider =>
         {
+            var options = provider.GetRequiredService<IOptions<JobSchedulingOptions>>().Value;
             var storageOptions = new PostgreSqlStorageOptions
             {
                 SchemaName = "hangfire",
@@ -77,20 +75,22 @@ public static class ServiceCollectionExtensions
             }
         );
 
-        if (options.RunServer)
-        {
-            services.AddHangfireServer(
-                (provider, server) =>
-                {
-                    server.Queues = JobQueues.All;
-                    server.WorkerCount = provider
-                        .GetRequiredService<IOptions<JobSchedulingOptions>>()
-                        .Value.WorkerCount;
-                    server.ServerTimeout = TimeSpan.FromMinutes(5);
-                    server.ShutdownTimeout = TimeSpan.FromSeconds(30);
-                }
-            );
-        }
+        // Whether this process runs the server is read from the registered options when the
+        // host starts, never at registration: Hangfire's hosted service is wrapped so it's
+        // built only when RunServer is on.
+        var firstAdded = services.Count;
+        services.AddHangfireServer(
+            (provider, server) =>
+            {
+                server.Queues = JobQueues.All;
+                server.WorkerCount = provider
+                    .GetRequiredService<IOptions<JobSchedulingOptions>>()
+                    .Value.WorkerCount;
+                server.ServerTimeout = TimeSpan.FromMinutes(5);
+                server.ShutdownTimeout = TimeSpan.FromSeconds(30);
+            }
+        );
+        RunOnlyWhenServerEnabled(services, firstAdded);
 
         // Recurring jobs - add new ones here.
         services.AddRecurringJob<SyncUserProfilesJob>();
@@ -100,6 +100,45 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobManagementService, JobManagementService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Replaces the hosted services registered from <paramref name="firstAdded"/> on (Hangfire's
+    /// server) with factories that build them only when <see cref="JobSchedulingOptions.RunServer"/>
+    /// is on, and otherwise a hosted service that does nothing.
+    /// </summary>
+    private static void RunOnlyWhenServerEnabled(IServiceCollection services, int firstAdded)
+    {
+        for (var index = firstAdded; index < services.Count; index++)
+        {
+            var descriptor = services[index];
+            if (descriptor.ServiceType != typeof(IHostedService) || descriptor.IsKeyedService)
+            {
+                continue;
+            }
+
+            services[index] = ServiceDescriptor.Describe(
+                typeof(IHostedService),
+                provider =>
+                    provider.GetRequiredService<IOptions<JobSchedulingOptions>>().Value.RunServer
+                        ? descriptor.ImplementationInstance
+                            ?? descriptor.ImplementationFactory?.Invoke(provider)
+                            ?? ActivatorUtilities.CreateInstance(
+                                provider,
+                                descriptor.ImplementationType!
+                            )
+                        : new DisabledJobServer(),
+                descriptor.Lifetime
+            );
+        }
+    }
+
+    /// <summary>Stands in for Hangfire's server when <c>JobScheduling:RunServer</c> is off.</summary>
+    private sealed class DisabledJobServer : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     /// <summary>

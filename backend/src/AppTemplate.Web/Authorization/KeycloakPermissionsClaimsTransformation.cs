@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.Json;
 using AppTemplate.UseCases.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -8,8 +8,11 @@ namespace AppTemplate.Web.Authorization;
 
 public sealed class KeycloakAuthorizationOptions
 {
-    /// <summary>The Keycloak client whose client roles are this API's permissions.</summary>
-    public string ApiClientId { get; set; } = "apptemplate-api";
+    /// <summary>
+    /// The Keycloak client whose client roles are this API's permissions. Set from the
+    /// required <c>Keycloak:Audience</c> (see <c>AuthorizationConfigurations</c>).
+    /// </summary>
+    public string ApiClientId { get; set; } = string.Empty;
 }
 
 /// <summary>

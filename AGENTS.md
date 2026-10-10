@@ -107,7 +107,10 @@ Dependencies point inward:
 
 ## 9. Configuration and dependency injection
 
-- Bind settings to typed options and validate them on start (`ValidateOnStart`), as `KeycloakAdminOptions` does.
+- Register options before using them: `AddOptions<T>().Bind(...)` with explicit validation rules and `ValidateOnStart()`. `ValidateOnStart` alone makes nothing required; the rules do.
+- Never invent configuration at the call site: no `GetSection(...).Get<T>() ?? new T()`, no `configuration["Key"] ?? "literal"`. Read options through `IOptions<T>` when the service or framework options are built (`AddOptions<TFramework>().Configure<IOptions<T>>(...)`, DI factories), not at registration. A required plain value uses `GetRequiredValue` (ServiceDefaults), read at registration so a missing value fails startup, not the first request.
+- Three kinds of settings: **required** (validated as present), **optional feature** (empty means off, as `FileStorage:ServiceUrl`; when on, every setting is validated so a partial configuration fails), and **safe defaults** (defaults live in the options class, never in `appsettings*.json`, which keeps only values we set).
+- A new options type joins the explicit list in its composition root's tests (`OptionsRegistrationTests` for Web, `ConfigurationTests` for the backend for frontend). Why: `docs/content/best-practices.md`, Options.
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
 - Never inject a scoped service into a singleton.
 - Document any new configuration key, environment variable or AppHost parameter.

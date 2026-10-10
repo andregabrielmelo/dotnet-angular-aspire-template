@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -39,28 +40,39 @@ public static class RequestTimeoutConfigurations
         IConfiguration configuration
     )
     {
-        var settings =
-            configuration
-                .GetSection(RequestTimeoutSettings.SectionName)
-                .Get<RequestTimeoutSettings>()
-            ?? new RequestTimeoutSettings();
+        services
+            .AddOptions<RequestTimeoutSettings>()
+            .Bind(configuration.GetSection(RequestTimeoutSettings.SectionName))
+            .Validate(
+                settings =>
+                    settings.Default > TimeSpan.Zero && settings.ExternalCall > TimeSpan.Zero,
+                "RequestTimeouts:Default and ExternalCall must be positive."
+            )
+            .ValidateOnStart();
 
-        services.AddRequestTimeouts(options =>
-        {
-            options.DefaultPolicy = new RequestTimeoutPolicy
-            {
-                Timeout = settings.Default,
-                TimeoutStatusCode = StatusCodes.Status504GatewayTimeout,
-            };
-            options.AddPolicy(
-                RequestTimeoutPolicies.ExternalCall,
-                new RequestTimeoutPolicy
+        services.AddRequestTimeouts();
+        // Read from the registered settings when the options are built, never at registration.
+        services
+            .AddOptions<RequestTimeoutOptions>()
+            .Configure<IOptions<RequestTimeoutSettings>>(
+                (options, registered) =>
                 {
-                    Timeout = settings.ExternalCall,
-                    TimeoutStatusCode = StatusCodes.Status504GatewayTimeout,
+                    var settings = registered.Value;
+                    options.DefaultPolicy = new RequestTimeoutPolicy
+                    {
+                        Timeout = settings.Default,
+                        TimeoutStatusCode = StatusCodes.Status504GatewayTimeout,
+                    };
+                    options.AddPolicy(
+                        RequestTimeoutPolicies.ExternalCall,
+                        new RequestTimeoutPolicy
+                        {
+                            Timeout = settings.ExternalCall,
+                            TimeoutStatusCode = StatusCodes.Status504GatewayTimeout,
+                        }
+                    );
                 }
             );
-        });
 
         return services;
     }

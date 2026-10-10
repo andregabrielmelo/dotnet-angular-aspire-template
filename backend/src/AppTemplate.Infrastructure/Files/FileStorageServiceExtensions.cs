@@ -12,9 +12,10 @@ public static class FileStorageServiceExtensions
     private const string DependencyTag = "dependency";
 
     /// <summary>
-    /// S3-compatible object storage (ADR 018). Without
-    /// <c>FileStorage:ServiceUrl</c> it registers an "unavailable" storage and no health check,
-    /// so the app runs without it.
+    /// S3-compatible object storage (ADR 018), an optional feature: without
+    /// <c>FileStorage:ServiceUrl</c> storage is off (an "unavailable" storage, no health check)
+    /// and the app runs without it. With it, every setting is validated at startup, so a
+    /// partial configuration fails instead of silently turning storage off.
     /// </summary>
     public static IServiceCollection AddFileStorage(
         this IServiceCollection services,
@@ -37,15 +38,6 @@ public static class FileStorageServiceExtensions
             )
             .ValidateOnStart();
 
-        var settings =
-            configuration.GetSection(FileStorageOptions.SectionName).Get<FileStorageOptions>()
-            ?? new FileStorageOptions();
-        if (!settings.IsConfigured)
-        {
-            services.AddSingleton<IFileStorage, UnconfiguredFileStorage>();
-            return services;
-        }
-
         services.AddSingleton<IAmazonS3>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
@@ -65,14 +57,35 @@ public static class FileStorageServiceExtensions
                 }
             );
         });
-        services.AddSingleton<IFileStorage, S3FileStorage>();
+        // Whether storage is on is decided from the registered options when first resolved,
+        // never from configuration read at registration. The S3 client is created only then.
+        services.AddSingleton<IFileStorage>(provider =>
+            provider.GetRequiredService<IOptions<FileStorageOptions>>().Value.IsConfigured
+                ? ActivatorUtilities.CreateInstance<S3FileStorage>(provider)
+                : new UnconfiguredFileStorage()
+        );
+        services.AddHealthChecks();
         services
-            .AddHealthChecks()
-            .AddCheck<FileStorageHealthCheck>(
-                "file-storage",
-                failureStatus: HealthStatus.Degraded,
-                tags: [DependencyTag],
-                timeout: TimeSpan.FromSeconds(3)
+            .AddOptions<HealthCheckServiceOptions>()
+            .Configure<IOptions<FileStorageOptions>>(
+                (health, storage) =>
+                {
+                    if (storage.Value.IsConfigured)
+                    {
+                        health.Registrations.Add(
+                            new HealthCheckRegistration(
+                                "file-storage",
+                                provider =>
+                                    ActivatorUtilities.CreateInstance<FileStorageHealthCheck>(
+                                        provider
+                                    ),
+                                HealthStatus.Degraded,
+                                [DependencyTag],
+                                TimeSpan.FromSeconds(3)
+                            )
+                        );
+                    }
+                }
             );
 
         return services;

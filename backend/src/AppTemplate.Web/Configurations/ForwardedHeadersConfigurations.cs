@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 
 namespace AppTemplate.Web.Configurations;
 
@@ -27,28 +28,44 @@ public static class ForwardedHeadersConfigurations
         IConfiguration configuration
     )
     {
-        var settings =
-            configuration
-                .GetSection(ForwardedHeadersSettings.SectionName)
-                .Get<ForwardedHeadersSettings>()
-            ?? new ForwardedHeadersSettings();
+        services
+            .AddOptions<ForwardedHeadersSettings>()
+            .Bind(configuration.GetSection(ForwardedHeadersSettings.SectionName))
+            .Validate(
+                settings => settings.KnownProxies.All(proxy => IPAddress.TryParse(proxy, out _)),
+                "ForwardedHeaders:KnownProxies must be IP addresses."
+            )
+            .Validate(
+                settings =>
+                    settings.KnownNetworks.All(network =>
+                        System.Net.IPNetwork.TryParse(network, out _)
+                    ),
+                "ForwardedHeaders:KnownNetworks must be CIDR networks, such as 10.0.0.0/8."
+            )
+            .ValidateOnStart();
 
-        services.Configure<ForwardedHeadersOptions>(options =>
-        {
-            options.ForwardedHeaders =
-                ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            // ASP.NET Core trusts loopback by default; trust exactly what is configured instead.
-            options.KnownProxies.Clear();
-            options.KnownIPNetworks.Clear();
-            foreach (var proxy in settings.KnownProxies)
-            {
-                options.KnownProxies.Add(IPAddress.Parse(proxy));
-            }
-            foreach (var network in settings.KnownNetworks)
-            {
-                options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
-            }
-        });
+        // Read from the registered settings when the options are built, never at registration.
+        services
+            .AddOptions<ForwardedHeadersOptions>()
+            .Configure<IOptions<ForwardedHeadersSettings>>(
+                (options, registered) =>
+                {
+                    var settings = registered.Value;
+                    options.ForwardedHeaders =
+                        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                    // ASP.NET Core trusts loopback by default; trust exactly what is configured instead.
+                    options.KnownProxies.Clear();
+                    options.KnownIPNetworks.Clear();
+                    foreach (var proxy in settings.KnownProxies)
+                    {
+                        options.KnownProxies.Add(IPAddress.Parse(proxy));
+                    }
+                    foreach (var network in settings.KnownNetworks)
+                    {
+                        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+                    }
+                }
+            );
 
         return services;
     }
