@@ -1,12 +1,12 @@
 ---
-title: "ADR 019: ETags, optimistic concurrency and idempotency keys"
+title: "ADR 019: ETags and optimistic concurrency"
 weight: 190
 ---
 
-# ADR 019: ETags, optimistic concurrency and idempotency keys
+# ADR 019: ETags and optimistic concurrency
 
 ## Status
-Accepted.
+Accepted. Idempotency keys were added to this ADR and then removed until a client needs them; see [Deferred work]({{< relref "../backlog" >}}).
 
 ## Context
 Two people editing the same user both read it, both change it, and the second save silently overwrites the first ("lost update"). HTTP has the tools to prevent this: an `ETag` on reads and an `If-Match` precondition on writes. Postgres has a per-row version for free: the `xmin` system column changes with every update.
@@ -36,44 +36,3 @@ Two people editing the same user both read it, both change it, and the second sa
 - Background writers (profile sync, welcome email) can now fail on a race too. They throw, and Hangfire or the outbox retries them, which reloads fresh data.
 - `xmin` is per row and changes on **any** update of it, including columns the API doesn't show (`welcome_email_sent_at_utc`). Such a change makes an ETag stale even though the visible representation didn't change. That's safe (the client rereads), just occasionally unnecessary.
 - `ConcurrencyTests` covers every `If-Match` case, plus two forced races (a test interceptor holds both writers until each has loaded the same version): same `If-Match` gives one 200 and one 412; no `If-Match` gives one 200 and one 409.
-
-## Idempotency keys (extension)
-
-### Context
-A client that times out on a write can't tell whether it happened. Retrying blindly can apply it twice; not retrying can lose it. An `Idempotency-Key` header lets the client retry safely: the server runs the request once and answers every repeat with the first result.
-
-### Decision: Option A, atomic execute and replay
-- **Table** `idempotency_records`: unique (`subject`, `operation`, `key`), plus `fingerprint`, `result_payload` (JSON), `created_at_utc` and `expires_at_utc` (24 hours, `Idempotency:RecordLifetime`). **No status column:** a row becomes visible only once it has committed with the command's changes, so a row always means "done".
-- **Opt-in per command:** `IIdempotentCommand` (`IdempotencyKey`, and an `Operation` like `users.update.v1`, never the route). The reference is `PUT /v1/users/{id}`.
-- **Fingerprint:** SHA-256 of the operation plus the command's canonical JSON (route values and `If-Match` included, the key excluded). It's the semantic input, not the raw body.
-- **`IdempotencyBehavior`** (a Mediator pipeline behavior, so UseCases owns it and nothing in it is HTTP) runs everything in one transaction (`IUnitOfWork`):
-  1. **Authorize first**, with `ICommandAuthorizer<T>`, so a repeat from a caller who has since lost access is a 403, never a replay.
-  2. **Claim:** insert the record before the handler. A concurrent duplicate's insert **blocks on the unique index** until this transaction ends.
-  3. **On a unique violation** (a committed record exists): the same fingerprint replays its result; a different one is **422**.
-  4. **Otherwise** run the handler. On success, store the result and commit together with the business changes. On failure, roll back, leaving no record, so the retry runs.
-
-  So the handler runs once per committed key. A blocked duplicate replays if the first committed, or runs if it rolled back: there's no "in progress" 409.
-- **The stored result is the use case's `Result`**, not HTTP. A replay goes through the same `ResultExtensions` mapping (and the same ETag), and UseCases stays free of ASP.NET Core.
-- **Scope:** keys are per subject, so the same key from another user is unrelated. Anonymous requests and requests without the header run normally.
-- **Header:** `Idempotency-Key`, 1 to 64 of `[A-Za-z0-9_-]` (a UUID works); anything else is 400.
-- **Cache invalidation waits for the commit** (`IUnitOfWork.AfterCommit`): invalidating inside the transaction would let a concurrent read re-cache the old row.
-- **External side effects** still go through the outbox, so they commit atomically with the record or not at all.
-- `IdempotencyCleanupJob` (hourly) deletes expired records.
-
-### Consequences
-- A command that runs inside the behavior holds a transaction for its whole duration, including the handler. Keep idempotent handlers short; never call slow external services from them (use the outbox).
-- Keys expire after 24 hours; after that the same key runs again.
-- `IdempotencyTests` (Postgres) covers:
-  - an identical replay with the handler run once
-  - 422 on a fingerprint mismatch
-  - concurrent duplicates: the second waits on the first's open transaction, then replays, and there's one update
-  - no record after a handler failure, and the retry runs
-  - neither change nor record after a crash between the handler and the commit
-  - 403 on replay after the permission is revoked
-  - independent subjects
-  - malformed keys
-  - cleanup
-
-### Removing it
-Delete `AddIdempotency` (and `Infrastructure/Idempotency/`, with a migration dropping `idempotency_records`), `UseCases/Idempotency/`, the behavior's entry in `MediatorConfigurations`, `IIdempotentCommand` on `UpdateUserCommand` with its `UpdateUserAuthorizer`, and the header on `UpdateUserRequest`. Keep `IUnitOfWork` if anything else uses it.
-

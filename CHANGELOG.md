@@ -10,7 +10,6 @@ All notable changes to **this template** are documented here (not changes to pro
 
 ### Added
 
-- Idempotency keys (ADR 019): `PUT /v1/users/{id}` accepts `Idempotency-Key`; the first request runs in one transaction with its stored result, repeats replay it, concurrent duplicates wait then replay (never a 409), the same key with a different body is 422, and replays re-check authorization. Cache invalidation inside a transaction now waits for the commit.
 - ETags and optimistic concurrency on users (ADR 019): the row's `xmin` is the version, served as a strong ETag; `PUT` honours `If-Match` (RFC 9110 parsing, 412 on mismatch, 400 if malformed), and racing writes without it get 409 instead of a lost update.
 - File storage (ADR 018): S3-compatible object storage, Garage in the AppHost (single-node, default bucket, no admin API), optional at runtime. Avatar upload on the profile page: owner-only, rate-limited, signature- and dimension-checked before decoding, re-encoded as WebP without metadata, served with ETag and 304s, and old objects deleted through the outbox.
 - Audit log (ADR 017): allowlisted, masked entity changes of `IAuditable` entities written in the same transaction (a failed audit write fails the change), explicit events for job management and denied admin requests, `GET /v1/admin/audit` (`audit:read`) with bounded paging and time range, a daily retention job, and `Audit:Enabled` to turn it off.

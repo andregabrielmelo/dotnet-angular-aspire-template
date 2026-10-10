@@ -79,11 +79,6 @@ Dependencies point inward:
 - GET returns `EntityTagHeader.Format(version)` as the ETag; PUT parses `If-Match` with `EntityTagHeader.ParseIfMatch` and passes a `VersionPrecondition` to the use case. Return `ConcurrencyResults.PreconditionFailed` (412) or `ConcurrentChange` (409); catch `ConcurrencyConflictException` around the save.
 - Every write to a cached entity invalidates its cache tag, or GET serves a stale ETag.
 
-## 6d. Idempotency keys ([ADR 019](docs/content/architecture-decisions/adr-019-etags-and-optimistic-concurrency.md))
-
-- A write clients may retry gets `IIdempotentCommand` (an `IdempotencyKey` and a stable `Operation` like `users.update.v1`), an `Idempotency-Key` header on its request, and an `ICommandAuthorizer<T>` repeating its authorization so replays honour revoked access.
-- Its handler runs inside a transaction: keep it short, and send external side effects through the outbox.
-
 ## 6a. Auditing ([ADR 017](docs/content/architecture-decisions/adr-017-audit-log.md))
 
 - An entity whose changes matter for accountability implements `IAuditable`, and lists exactly the properties to record in `AddAuditing` (`InfrastructureServiceExtensions`). Never allowlist a secret or token. Personal data is masked automatically when its property or type is `[PersonalData]`.
@@ -100,7 +95,7 @@ Dependencies point inward:
 
 - Use cases cache through `HybridCache` directly (`GetUserHandler`). Cached values are primitives-only records (`CachedUser`) so they serialize to Redis.
 - Lookups that can miss use `GetOrCreateExistingAsync`, which never caches "not found".
-- Every cached entry carries a tag (`CacheTags`). Every write that affects it calls `ICacheInvalidator.InvalidateAsync(tag)` **after** the write succeeds. Invalidation is best-effort, so it never fails a write.
+- Every cached entry carries a tag (`CacheTags`). Every write that affects it calls `ICacheInvalidator.InvalidateAsync(tag)` **after** the write has committed, never inside an open transaction: invalidating earlier lets a concurrent read re-cache the old row. Invalidation is best-effort, so it never fails a write.
 - Output caching (`AuthorizedSharedResponsePolicy`) is only for responses that are identical for every authorized caller. Never use it for anything that depends on the caller.
 - A new cached read needs a key, a tag, an invalidation call in each affected write, and a functional test like `CachingTests`.
 
