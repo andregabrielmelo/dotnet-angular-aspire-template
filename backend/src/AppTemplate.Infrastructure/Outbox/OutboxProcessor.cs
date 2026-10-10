@@ -124,7 +124,7 @@ public sealed partial class OutboxProcessor(
 
         try
         {
-            var integrationEvent = registry.Deserialize(message.Payload, type);
+            var integrationEvent = IntegrationEventRegistry.Deserialize(message.Payload, type);
             await DispatchToEachHandlerAsync(message.Id, integrationEvent, type, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
