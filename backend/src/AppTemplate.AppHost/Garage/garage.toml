@@ -1,0 +1,16 @@
+# Single-node Garage for local development (and the functional tests, which mount this same
+# file). Secrets come from the environment: GARAGE_RPC_SECRET, and the default key and bucket
+# from GARAGE_DEFAULT_ACCESS_KEY / GARAGE_DEFAULT_SECRET_KEY / GARAGE_DEFAULT_BUCKET, which
+# `garage server --single-node --default-bucket` creates on first start.
+# There is deliberately no [admin] section: no admin API, no admin token, nothing to leak.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"

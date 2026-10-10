@@ -47,7 +47,9 @@ public sealed class FullStackFixture : IAsyncLifetime
             foreach (
                 var annotation in container
                     .Annotations.Where(a =>
-                        a is ContainerMountAnnotation or ContainerLifetimeAnnotation
+                        a
+                            is ContainerMountAnnotation { Type: ContainerMountType.Volume }
+                                or ContainerLifetimeAnnotation
                     )
                     .ToList()
             )
