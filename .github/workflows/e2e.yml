@@ -82,9 +82,12 @@ jobs:
 
       # The API and the backend for frontend serve HTTPS with the ASP.NET Core development
       # certificate, and the backend for frontend calls the API over it, so it must be trusted.
+      # Exit code 4 means "trusted by some clients only": the runner has no browser certificate
+      # store, which is fine - .NET (OpenSSL) trust via SSL_CERT_DIR is what matters, and
+      # Playwright ignores certificate errors.
       - name: Create and trust the development certificate
         run: |
-          dotnet dev-certs https --trust
+          dotnet dev-certs https --trust || [ $? -eq 4 ]
           echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
 
       - name: Build
