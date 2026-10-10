@@ -4,6 +4,7 @@ using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Jobs;
 using AppTemplate.Infrastructure.Jobs.FireAndForget;
 using AppTemplate.Infrastructure.Jobs.RecurringJobs;
+using AppTemplate.Infrastructure.Outbox;
 using AppTemplate.UseCases.Telemetry;
 using AppTemplate.Web.Features.UserFeatures;
 using Hangfire;
@@ -37,6 +38,7 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
     [Theory]
     [InlineData(SyncUserProfilesJob.Id, "0 * * * *")]
     [InlineData(TestRecurringJobDefinition.Id, "0 0 * * *")]
+    [InlineData(OutboxSweepJob.Id, "* * * * *")]
     public void Startup_SchedulesEveryRecurringJobDefinitionThroughTheRunner(
         string jobId,
         string cron
@@ -56,17 +58,14 @@ public class BackgroundJobsTests(AppTemplateWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task ProvisioningANewUser_EnqueuesAWelcomeEmail()
+    public async Task ProvisioningANewUser_StartsTheOutboxRelayWithoutSendingInTheRequest()
     {
         var me = await ProvisionAsync($"sub-{Guid.NewGuid():N}");
 
         var enqueued = Storage.GetMonitoringApi().EnqueuedJobs(JobQueues.Critical, 0, 1000);
 
-        Assert.Contains(
-            enqueued,
-            job =>
-                job.Value.Job.Type == typeof(WelcomeEmailJob) && (int)job.Value.Job.Args[0] == me.Id
-        );
+        // The fast path: the welcome email is in the outbox, and the relay was nudged.
+        Assert.Contains(enqueued, job => job.Value.Job.Type == typeof(ProcessOutboxJob));
         // Enqueued, not sent: the request didn't wait on SMTP.
         Assert.DoesNotContain(factory.EmailSender.Sent, e => e.To == me.Email);
     }

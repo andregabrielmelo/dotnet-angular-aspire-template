@@ -1,7 +1,7 @@
+using AppTemplate.Core.Aggregates.UserAggregate.Events;
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.SharedKernel;
 using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Users.GetOrCreateCurrent;
 using Ardalis.Result;
 using NSubstitute;
@@ -12,7 +12,6 @@ public class GetOrCreateCurrentUserHandlerTests
 {
     private readonly IRepository<User> _repository = Substitute.For<IRepository<User>>();
     private readonly ICacheInvalidator _cacheInvalidator = Substitute.For<ICacheInvalidator>();
-    private readonly IBackgroundJobScheduler _jobs = Substitute.For<IBackgroundJobScheduler>();
     private readonly TestMetrics _metrics = new();
 
     private static readonly GetOrCreateCurrentUserCommand Command = new(
@@ -22,7 +21,7 @@ public class GetOrCreateCurrentUserHandlerTests
     );
 
     private GetOrCreateCurrentUserHandler CreateHandler() =>
-        new(_repository, TestCaches.Create(), _cacheInvalidator, _jobs, _metrics.Application);
+        new(_repository, TestCaches.Create(), _cacheInvalidator, _metrics.Application);
 
     [Fact]
     public async Task Handle_WithExistingUser_ReturnsItWithoutCreating()
@@ -138,26 +137,15 @@ public class GetOrCreateCurrentUserHandlerTests
         await _cacheInvalidator
             .Received(1)
             .InvalidateAsync(CacheTags.Users, Arg.Any<CancellationToken>());
-        Assert.Single(
-            _jobs.ReceivedCalls(),
-            call => call.GetMethodInfo().Name == nameof(IBackgroundJobScheduler.EnqueueWelcomeEmail)
-        );
-    }
-
-    [Fact]
-    public async Task Handle_ExistingUser_DoesNotEnqueueAnotherWelcomeEmail()
-    {
-        var existingUser = User.Create(Command.ExternalId, Command.Name, Command.Email);
-        existingUser.Id = UserId.From(1); // as if loaded from the database
-        _repository
-            .FirstOrDefaultAsync(
-                Arg.Any<UserByExternalIdSpecification>(),
+        // The welcome email is saved to the outbox with the user, not enqueued separately.
+        await _repository
+            .Received(1)
+            .AddAsync(
+                Arg.Is<User>(user =>
+                    user.IntegrationEvents.OfType<UserProvisioned>().Single().ExternalId
+                    == Command.ExternalId
+                ),
                 Arg.Any<CancellationToken>()
-            )
-            .Returns(existingUser);
-
-        await CreateHandler().Handle(Command, CancellationToken.None);
-
-        Assert.Empty(_jobs.ReceivedCalls());
+            );
     }
 }

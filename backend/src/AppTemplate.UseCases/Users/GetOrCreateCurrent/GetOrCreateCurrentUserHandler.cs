@@ -2,7 +2,6 @@
 using AppTemplate.Core.Aggregates.UserAggregate.Specifications;
 using AppTemplate.Core.ValueObjects;
 using AppTemplate.UseCases.Caching;
-using AppTemplate.UseCases.Jobs;
 using AppTemplate.UseCases.Telemetry;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -19,7 +18,6 @@ public class GetOrCreateCurrentUserHandler(
     IRepository<User> _repository,
     HybridCache _cache,
     ICacheInvalidator _cacheInvalidator,
-    IBackgroundJobScheduler _jobs,
     ApplicationMetrics _metrics
 ) : ICommandHandler<GetOrCreateCurrentUserCommand, Result<CurrentUserDto>>
 {
@@ -71,8 +69,8 @@ public class GetOrCreateCurrentUserHandler(
         // User lists cached before this user existed are now stale.
         await _cacheInvalidator.InvalidateAsync(CacheTags.Users, cancellationToken);
 
-        // Sending email is slow and can fail - never make the sign-in request wait on it.
-        _jobs.EnqueueWelcomeEmail(createdUser.Id);
+        // The welcome email goes out from the outbox: User.Create raised UserProvisioned, and
+        // AddAsync saved it in the same transaction as the user, so it can't be lost.
 
         return ToDto(createdUser);
     }
