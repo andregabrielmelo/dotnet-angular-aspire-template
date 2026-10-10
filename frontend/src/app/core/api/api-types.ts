@@ -360,7 +360,8 @@ export interface components {
      *       "name": "Sample User",
      *       "phoneNumber": "555 0100",
      *       "phoneCountryCode": "+1",
-     *       "phoneExtension": null
+     *       "phoneExtension": null,
+     *       "idempotencyKey": null
      *     }
      */
     UpdateUserRequest: {
@@ -372,6 +373,8 @@ export interface components {
       phoneCountryCode?: string | null;
       /** @example null */
       phoneExtension?: string | null;
+      /** @example null */
+      idempotencyKey?: string | null;
     };
     HttpValidationProblemDetails: components['schemas']['ProblemDetails'] &
       ({
@@ -585,7 +588,10 @@ export interface operations {
   AppTemplateWebFeaturesUserFeaturesUpdateEndpoint: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @example null */
+        'idempotency-Key'?: string | null;
+      };
       path: {
         /** @example 1 */
         id: number;
@@ -661,6 +667,15 @@ export interface operations {
       };
       /** @description If-Match doesn't match the current version */
       412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Idempotency-Key reused with a different request */
+      422: {
         headers: {
           [name: string]: unknown;
         };

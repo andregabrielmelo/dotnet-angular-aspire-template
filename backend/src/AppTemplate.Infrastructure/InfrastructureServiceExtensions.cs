@@ -5,8 +5,10 @@ using AppTemplate.Infrastructure.Auditing;
 using AppTemplate.Infrastructure.Data;
 using AppTemplate.Infrastructure.Data.Queries;
 using AppTemplate.Infrastructure.Files;
+using AppTemplate.Infrastructure.Idempotency;
 using AppTemplate.Infrastructure.Jobs.Extensions;
 using AppTemplate.Infrastructure.Outbox;
+using AppTemplate.UseCases.Idempotency;
 using AppTemplate.UseCases.Users.List;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -89,6 +91,9 @@ public static class InfrastructureServiceExtensions
         );
 
         services.AddFileStorage(config);
+
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddIdempotency(config);
 
         // Every IAuditable entity lists exactly the properties its audit entries may contain.
         services.AddAuditing(

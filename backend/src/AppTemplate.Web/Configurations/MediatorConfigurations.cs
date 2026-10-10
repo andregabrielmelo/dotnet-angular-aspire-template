@@ -1,5 +1,6 @@
 ﻿using AppTemplate.Core.Aggregates.UserAggregate;
 using AppTemplate.Infrastructure;
+using AppTemplate.UseCases.Idempotency;
 using AppTemplate.UseCases.Users;
 
 namespace AppTemplate.Web.Configurations;
@@ -27,7 +28,12 @@ public static class MediatorConfigurations
             ];
 
             // Register pipeline behaviors here (order matters)
-            options.PipelineBehaviors = [typeof(LoggingBehavior<,>)];
+            // Idempotency applies only to IIdempotentCommand (a generic constraint), inside logging.
+            options.PipelineBehaviors =
+            [
+                typeof(LoggingBehavior<,>),
+                typeof(IdempotencyBehavior<,>),
+            ];
 
             // If you have stream behaviors:
             // options.StreamPipelineBehaviors = [ typeof(YourStreamBehavior<,>) ];

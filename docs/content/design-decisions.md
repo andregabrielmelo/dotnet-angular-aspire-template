@@ -68,7 +68,7 @@ A template should *support* a capability without *requiring* every application t
 - The audit log is registered through one `AddAuditing()` call and can be switched off with `Audit:Enabled=false` ([ADR 017]({{< relref "architecture-decisions/adr-017-audit-log" >}})); to remove it entirely, delete `Infrastructure/Auditing/`, the `AuditEntries` set (with a migration dropping `audit_entries`), `UseCases/Auditing/` and `Web/Features/AuditFeatures/`, and the `IAuditLog` calls in the job and outbox handlers.
 - File storage is optional: without `FileStorage:ServiceUrl` the app runs and only file endpoints answer 503 ([ADR 018]({{< relref "architecture-decisions/adr-018-file-storage" >}}), including how to remove it).
 - ETags and `If-Match` are opt-in per entity: an entity gets a `Version` concurrency token only when concurrent edits matter ([ADR 019]({{< relref "architecture-decisions/adr-019-etags-and-optimistic-concurrency" >}})).
-- Each production capability added later (idempotency keys) is **opt-in**. It's registered through one `Add<Capability>()` extension, and the app builds and its tests pass without it. Its documentation has a "Removing it" section, and no feature references its types unless that feature uses it.
+- Idempotency keys are opt-in per command (`IIdempotentCommand`), registered by `AddIdempotency()`; without it the pipeline behavior finds no store and commands simply run ([ADR 019]({{< relref "architecture-decisions/adr-019-etags-and-optimistic-concurrency" >}}), "Removing it").
 
 # The Frontend
 

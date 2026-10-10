@@ -158,6 +158,15 @@
               "format": "int32"
             },
             "example": 1
+          },
+          {
+            "name": "idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "example": null
           }
         ],
         "requestBody": {
@@ -233,6 +242,16 @@
           },
           "412": {
             "description": "If-Match doesn't match the current version",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key reused with a different request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1205,7 +1224,8 @@
           "name": "Sample User",
           "phoneNumber": "555 0100",
           "phoneCountryCode": "+1",
-          "phoneExtension": null
+          "phoneExtension": null,
+          "idempotencyKey": null
         },
         "additionalProperties": false,
         "required": [
@@ -1231,6 +1251,14 @@
           },
           "phoneExtension": {
             "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
             "nullable": true,
             "example": null
           }
