@@ -268,6 +268,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/audit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List audit entries
+     * @description Entity changes and security events, newest first. Filter by entity, actor and time range (default: the last 7 days).
+     */
+    get: operations['AppTemplateWebFeaturesAuditFeaturesListAuditEntriesEndpoint'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -378,6 +398,37 @@ export interface components {
       /** @example sample.user@example.com */
       email: string;
     };
+    PagedResultOfAuditEntryDto: {
+      items: components['schemas']['AuditEntryDto'][];
+      /** Format: int32 */
+      page: number;
+      /** Format: int32 */
+      perPage: number;
+      /** Format: int32 */
+      totalCount: number;
+      /** Format: int32 */
+      totalPages: number;
+    };
+    AuditEntryDto: {
+      /** Format: guid */
+      id: string;
+      /** Format: date-time */
+      occurredAtUtc: string;
+      actor: string;
+      action: string;
+      entityType: string;
+      entityKey: string;
+      outcome: string;
+      changes?: {
+        [key: string]: components['schemas']['AuditValueChange'];
+      } | null;
+      traceId?: string | null;
+    };
+    AuditValueChange: {
+      old?: string | null;
+      new?: string | null;
+    };
+    ListAuditEntriesRequest: Record<string, never>;
   };
   responses: never;
   parameters: never;
@@ -1065,6 +1116,57 @@ export interface operations {
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
+      };
+    };
+  };
+  AppTemplateWebFeaturesAuditFeaturesListAuditEntriesEndpoint: {
+    parameters: {
+      query: {
+        entityType?: string | null;
+        entityKey?: string | null;
+        actor?: string | null;
+        from?: string | null;
+        to?: string | null;
+        page: number;
+        per_page: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A page of audit entries */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PagedResultOfAuditEntryDto'];
+        };
+      };
+      /** @description Invalid filter or page */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['HttpValidationProblemDetails'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requires the audit:read permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

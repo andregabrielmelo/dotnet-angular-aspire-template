@@ -9,6 +9,7 @@ export const Permission = {
   UsersDelete: 'users:delete',
   JobsRead: 'jobs:read',
   JobsManage: 'jobs:manage',
+  AuditRead: 'audit:read',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
