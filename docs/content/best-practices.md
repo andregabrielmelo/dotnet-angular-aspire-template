@@ -107,6 +107,16 @@ Explicit guidelines for projects built from this template, so every project that
 - `AppTemplate.ServiceDefaults` (wired into `Web` via `AddServiceDefaults()`) is where cross-cutting concerns (OpenTelemetry, health checks, service discovery, retries) belong - once for the whole app, not duplicated per-service.
 - The AppHost is a local-orchestration and manifest-generation tool (see [ADR 002]({{< relref "architecture-decisions/adr-002-aspire-orchestration" >}})) - it is not itself a production runtime.
 
+## Third-party configuration files
+
+Configuration files for services we run but don't write, such as `AppHost/Garage/garage.toml`, list every option the pinned version supports:
+
+- Options in effect are set explicitly, even when the value equals the default, and marked `(default)`. An upgrade that changes a default then can't silently change our setup.
+- Options we don't use stay commented out, showing their default and when you'd set them, so the file doubles as a reference for the version we actually run. The online reference often describes a newer release.
+- The file names the version it was checked against. When the image tag is bumped, re-check every option and default; many services (Garage among them) silently ignore unknown keys, so a renamed option wouldn't fail loudly.
+
+This applies to third-party service configuration only. `appsettings*.json` keeps just the values we set, and the Keycloak realm file is an export.
+
 ## PostgreSQL & migrations
 
 - `DatabaseConfigurations.ApplyMigrationsOnStartup` (and the automatic migration in `Development`) is a **local/demo convenience, not a production deployment strategy**. Auto-migrating on app startup means a bad migration blocks the app from starting at all, and with more than one replica, every instance races to apply migrations concurrently. For a real deployment, generate a [migration bundle](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying#apply-migrations-at-runtime) (`dotnet ef migrations bundle`) and run it as its own CI/CD step before the new app version starts.

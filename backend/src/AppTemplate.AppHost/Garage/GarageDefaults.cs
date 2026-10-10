@@ -8,7 +8,10 @@ public static class GarageDefaults
     public const string Registry = "docker.io";
     public const string Image = "dxflrs/garage";
 
-    /// <summary>v2.3+ is needed for <c>--single-node --default-bucket</c>.</summary>
+    /// <summary>
+    /// v2.3+ is needed for <c>--single-node --default-bucket</c>. garage.toml lists this
+    /// version's options and defaults: re-check it when bumping the tag.
+    /// </summary>
     public const string Tag = "v2.4.1";
 
     public const string Entrypoint = "/garage";

@@ -116,6 +116,7 @@ Dependencies point inward:
 - Never hardcode secrets, credentials or environment-specific URLs. Local services are wired by Aspire (`WithReference`/`WaitFor` in `AppHost.cs`); secrets are AppHost parameters or user secrets.
 - Never inject a scoped service into a singleton.
 - Document any new configuration key, environment variable or AppHost parameter.
+- Configuration files for third-party services we run (`AppHost/Garage/garage.toml`) list every option of the pinned version: options in effect are set explicitly, even to their default, and unused ones stay commented out with their default and when to use them. Re-check the file whenever the version is bumped. Why: `docs/content/best-practices.md`, Third-party configuration files.
 
 ## 9a. Health checks
 
