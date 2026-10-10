@@ -6,7 +6,7 @@ weight: 190
 # ADR 019: ETags and optimistic concurrency
 
 ## Status
-Accepted.
+Accepted. Idempotency keys were added to this ADR and then removed until a client needs them; see [Deferred work]({{< relref "../backlog" >}}).
 
 ## Context
 Two people editing the same user both read it, both change it, and the second save silently overwrites the first ("lost update"). HTTP has the tools to prevent this: an `ETag` on reads and an `If-Match` precondition on writes. Postgres has a per-row version for free: the `xmin` system column changes with every update.
