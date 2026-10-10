@@ -1,10 +1,8 @@
 using System.Buffers;
-using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
 
-namespace AppTemplate.Web.Caching;
+namespace AppTemplate.Infrastructure.Caching;
 
 /// <summary>
 /// Redis is optional (see best-practices.md, Health checks). While the client knows the
@@ -131,86 +129,4 @@ internal sealed class FailOpenDistributedCache(
         Down ? ValueTask.CompletedTask
         : inner is IBufferDistributedCache buffered ? buffered.SetAsync(key, value, options, token)
         : new ValueTask(inner.SetAsync(key, value.ToArray(), options, token));
-}
-
-/// <summary>The output cache's equivalent of <see cref="FailOpenDistributedCache"/>.</summary>
-internal sealed class FailOpenOutputCacheStore(
-    IOutputCacheStore inner,
-    IConnectionMultiplexer redis
-) : IOutputCacheStore
-{
-    private bool Down => !redis.IsConnected;
-
-    public ValueTask<byte[]?> GetAsync(string key, CancellationToken cancellationToken) =>
-        Down ? ValueTask.FromResult<byte[]?>(null) : inner.GetAsync(key, cancellationToken);
-
-    public ValueTask SetAsync(
-        string key,
-        byte[] value,
-        string[]? tags,
-        TimeSpan validFor,
-        CancellationToken cancellationToken
-    ) =>
-        Down
-            ? ValueTask.CompletedTask
-            : inner.SetAsync(key, value, tags, validFor, cancellationToken);
-
-    public ValueTask EvictByTagAsync(string tag, CancellationToken cancellationToken) =>
-        Down ? ValueTask.CompletedTask : inner.EvictByTagAsync(tag, cancellationToken);
-}
-
-/// <summary>
-/// Degraded, never Unhealthy, when Redis is unreachable: it's an optional dependency. Reads
-/// the client's connection state and pings only when connected, so the probe itself never
-/// waits out a timeout.
-/// </summary>
-internal sealed class RedisConnectionHealthCheck(IConnectionMultiplexer redis) : IHealthCheck
-{
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (!redis.IsConnected)
-        {
-            return new HealthCheckResult(context.Registration.FailureStatus);
-        }
-
-        try
-        {
-            await redis.GetDatabase().PingAsync().WaitAsync(cancellationToken);
-            return HealthCheckResult.Healthy();
-        }
-        catch (Exception exception) when (exception is RedisException or TimeoutException)
-        {
-            return new HealthCheckResult(context.Registration.FailureStatus, exception: exception);
-        }
-    }
-}
-
-internal static class ServiceCollectionDecoratorExtensions
-{
-    /// <summary>Wraps the last registration of <typeparamref name="TService"/>, keeping its lifetime.</summary>
-    public static IServiceCollection Decorate<TService>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TService, TService> decorate
-    )
-        where TService : class
-    {
-        var descriptor = services.Last(d => d.ServiceType == typeof(TService) && !d.IsKeyedService);
-        services.Remove(descriptor);
-        services.Add(
-            ServiceDescriptor.Describe(
-                typeof(TService),
-                provider => decorate(provider, (TService)Create(provider, descriptor)),
-                descriptor.Lifetime
-            )
-        );
-        return services;
-    }
-
-    private static object Create(IServiceProvider provider, ServiceDescriptor descriptor) =>
-        descriptor.ImplementationInstance
-        ?? descriptor.ImplementationFactory?.Invoke(provider)
-        ?? ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType!);
 }

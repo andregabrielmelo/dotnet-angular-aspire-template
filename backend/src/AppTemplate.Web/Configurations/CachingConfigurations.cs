@@ -1,10 +1,7 @@
-﻿using AppTemplate.ServiceDefaults;
+﻿using AppTemplate.Infrastructure.Caching;
 using AppTemplate.UseCases.Caching;
 using AppTemplate.Web.Caching;
 using Microsoft.AspNetCore.OutputCaching;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
 
 namespace AppTemplate.Web.Configurations;
@@ -44,41 +41,19 @@ public static class CachingConfigurations
                 RedisConnectionName,
                 settings => settings.DisableHealthChecks = true
             );
-            services
-                .Decorate<IDistributedCache>(
-                    (provider, redis) =>
-                        new FailOpenDistributedCache(
-                            redis,
-                            provider.GetRequiredService<IConnectionMultiplexer>()
-                        )
-                )
-                .Decorate<IOutputCacheStore>(
-                    (provider, redis) =>
-                        new FailOpenOutputCacheStore(
-                            redis,
-                            provider.GetRequiredService<IConnectionMultiplexer>()
-                        )
-                );
-            services
-                .AddHealthChecks()
-                .AddCheck<RedisConnectionHealthCheck>(
-                    RedisConnectionName,
-                    failureStatus: HealthStatus.Degraded,
-                    tags: [HealthCheckTags.Dependency],
-                    timeout: TimeSpan.FromSeconds(3)
-                );
+            // Infrastructure makes the distributed cache fail open and adds its dependency check;
+            // the output cache is this host's own.
+            services.AddFailOpenRedisCache(RedisConnectionName);
+            services.Decorate<IOutputCacheStore>(
+                (provider, redis) =>
+                    new FailOpenOutputCacheStore(
+                        redis,
+                        provider.GetRequiredService<IConnectionMultiplexer>()
+                    )
+            );
         }
 
-        services.AddHybridCache(options =>
-        {
-            options.MaximumPayloadBytes = 1024 * 1024;
-            options.MaximumKeyLength = 512;
-            options.DefaultEntryOptions = new HybridCacheEntryOptions
-            {
-                Expiration = TimeSpan.FromMinutes(5),
-                LocalCacheExpiration = TimeSpan.FromMinutes(1),
-            };
-        });
+        services.AddApplicationCaching();
 
         services.AddOutputCache(options =>
         {
@@ -93,7 +68,8 @@ public static class CachingConfigurations
             );
         });
 
-        services.AddScoped<ICacheInvalidator, CacheInvalidator>();
+        // Infrastructure's invalidator evicts HybridCache, then every ICacheTagEvictor.
+        services.AddSingleton<ICacheTagEvictor, OutputCacheTagEvictor>();
 
         logger.LogInformation(
             "{Project} were configured ({Store})",
